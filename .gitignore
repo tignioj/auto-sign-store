@@ -10,3 +10,4 @@ xcuserdata/
 *.p12
 *.key
 *.log
+__pycache__/

@@ -1,6 +1,18 @@
 # AutoSign Store
 
-原生 SwiftUI iPhone / iPad 客户端，通过同一局域网中的 [AutoSign](../auto-sign) Mac 为应用重新签名并覆盖安装，包括 AutoSign Store 自身。
+原生 SwiftUI iPhone / iPad 客户端，通过同一局域网中的 [AutoSign](https://github.com/tignioj/auto-sign) Mac 为应用重新签名并覆盖安装，包括 AutoSign Store 自身。
+
+## 从源安装
+
+在 Mac AutoSign 的“选择安装包 → 从源获取”中点击 **添加 AutoSign Store 源**，也可以手动添加固定地址：
+
+```text
+https://raw.githubusercontent.com/tignioj/auto-sign-store/source/apps.json
+```
+
+选择 AutoSign Store，点击 **下载最新 IPA**，确认设备、证书和描述文件后签名安装。源中的 IPA 是未签名真机包，由 Mac 使用你自己的开发者身份签名；最低 iOS / iPadOS 17。也可以从 [GitHub Releases](https://github.com/tignioj/auto-sign-store/releases) 下载 `AutoSignStore.ipa`。
+
+源只负责提供安装包。安装后的连接与续签步骤见下文；升级 Store 时需刷新源、下载新版，再覆盖安装。
 
 ## 已实现
 
@@ -39,11 +51,46 @@ open AutoSignStore.xcodeproj
 python3 Scripts/generate-project.py
 ```
 
+## GitHub 自动构建与发布
+
+向 `main` 推送、提交 Pull Request 或在 Actions 手动运行 **Build and publish**，都会执行 Swift 核心测试、源生成测试，构建未签名真机 IPA，并上传 Actions artifact。普通构建不改变公开源。
+
+发布正式版本时，在 `Scripts/generate-project.py` 中更新 `MARKETING_VERSION` 和 `CURRENT_PROJECT_VERSION`，重新生成工程，提交并推送 `main`，再推送匹配版本的标签。例如发布下一个版本：
+
+```sh
+python3 Scripts/generate-project.py
+git add Scripts/generate-project.py AutoSignStore.xcodeproj
+git commit -m "Release 1.0.2"
+git push origin main
+git tag v1.0.2
+git push origin v1.0.2
+```
+
+`vX.Y.Z` 标签必须属于 `main`，并与实际 IPA 的版本完全匹配。构建成功后，Actions 使用仓库自带的 `GITHUB_TOKEN`：
+
+1. 将 `AutoSignStore.ipa` 及 SHA-256 校验文件发布到该标签的 GitHub Release。
+2. 从实际 IPA 读取 Bundle ID、版本、构建号、最低系统要求、隐私权限和字节大小，使用 Release 的发布时间、更新说明及下载地址生成 AltStore / SideStore 格式的 `apps.json`。
+3. 将 `apps.json` 和应用图标提交到独立的 `source` 分支，更新上面的固定 raw 链接；保留历史版本并将最高版本放在首位。
+
+不需要 Apple 证书、描述文件或额外 secrets，也不需要启用 GitHub Pages。仓库必须公开，匿名客户端才能访问源和 Release。首次成功发布后才会生成 `source` 分支。
+
+重跑发布任务会使用已经发布的原始 IPA，避免二次构建改变文件大小；发布旧标签不会把源的最新版本降级。若 Release 已成功但源更新失败，可在 Actions 重跑任务。
+
+本地检查源生成：
+
+```sh
+python3 -m unittest discover -s Scripts/tests -v
+python3 Scripts/generate-source.py --ipa dist/AutoSignStore.ipa \
+  --repository tignioj/auto-sign-store --tag v1.0.1 --output dist/apps.json
+```
+
+源格式参考 [AltStore 文档](https://faq.altstore.io/developers/make-a-source)，分发方式参考 [Kazumi 源](https://github.com/ChouChiu/Kazumi-AltStore-Source/tree/kazumi)。源是应用元数据 JSON，IPA 则托管在 GitHub Releases；无需单独部署应用商店服务器。
+
 ## 首次安装与连接
 
 1. 在相邻 `auto-sign` 项目运行 `./Scripts/build-app.sh`，退出旧版后打开新生成的 `dist/AutoSign.app`。
 2. iPhone / iPad 先通过 USB 信任并配对 Mac，开启开发者模式。在 Finder 选中设备并启用“连接到 Wi-Fi 时显示此设备”。
-3. 在 AutoSign 选择设备、签名证书及匹配的 Development / Ad Hoc 描述文件，安装上面的 `AutoSignStore.ipa`。首次安装后根据系统要求信任开发者证书。
+3. 在 AutoSign 添加上面的 Store 源并下载 IPA，或选择本地构建的 `AutoSignStore.ipa`，选择设备、签名证书及匹配的 Development / Ad Hoc 描述文件后安装。首次安装后根据系统要求信任开发者证书。
 4. Mac AutoSign 的“AutoSign Store · 手机续签”中开启局域网服务。
 5. 手机进入“连接”，允许本地网络权限，选择发现的 Mac，粘贴 Mac 显示的配对密钥并连接。若发现失败，手动输入 `http://Mac的局域网IP:8091`。
 6. 在“我的应用”明确选择这台手机 / 平板。iOS 不提供通用的本机 UDID 读取接口，所以需要核对设备名称。

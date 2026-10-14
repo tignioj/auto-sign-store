@@ -10,5 +10,6 @@ package_dir="$(mktemp -d "${TMPDIR:-/tmp}/autosign-store-package.XXXXXX")"
 trap 'rm -rf "$package_dir"' EXIT
 mkdir -p "$package_dir/Payload"
 /usr/bin/ditto DerivedData/Device/Build/Products/Release-iphoneos/AutoSignStore.app "$package_dir/Payload/AutoSignStore.app"
+rm -rf "$package_dir/Payload/AutoSignStore.app/_CodeSignature" "$package_dir/Payload/AutoSignStore.app/embedded.mobileprovision"
 /usr/bin/ditto -c -k --keepParent "$package_dir/Payload" dist/AutoSignStore.ipa
 echo "已生成待 AutoSign 签名的 IPA：$project_dir/dist/AutoSignStore.ipa"

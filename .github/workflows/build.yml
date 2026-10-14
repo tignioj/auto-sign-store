@@ -1,0 +1,139 @@
+name: Build and publish
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Require release tags to belong to main
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Test client core
+        run: swift test
+
+      - name: Test source generation
+        run: python3 -m unittest discover -s Scripts/tests -v
+
+      - name: Build unsigned device IPA
+        run: ./Scripts/build-ipa.sh
+
+      - name: Validate release metadata against the IPA
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          python3 Scripts/generate-source.py \
+            --ipa dist/AutoSignStore.ipa --repository "$GITHUB_REPOSITORY" \
+            --tag "$GITHUB_REF_NAME" --output dist/apps.json
+
+      - name: Calculate checksum
+        working-directory: dist
+        run: shasum -a 256 AutoSignStore.ipa > AutoSignStore.ipa.sha256
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: AutoSignStore-unsigned
+          path: |
+            dist/AutoSignStore.ipa
+            dist/AutoSignStore.ipa.sha256
+          if-no-files-found: error
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: autosign-store-source
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: AutoSignStore-unsigned
+          path: dist
+
+      - name: Publish IPA to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            # A rerun must use the original published binary and its exact size.
+            gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              --pattern AutoSignStore.ipa --pattern AutoSignStore.ipa.sha256 \
+              --dir dist --clobber
+          else
+            (cd dist && sha256sum --check AutoSignStore.ipa.sha256)
+            gh release create "$GITHUB_REF_NAME" \
+              dist/AutoSignStore.ipa dist/AutoSignStore.ipa.sha256 \
+              --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes \
+              --title "AutoSign Store $GITHUB_REF_NAME"
+          fi
+          (cd dist && sha256sum --check AutoSignStore.ipa.sha256)
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --json publishedAt,body,isDraft > dist/release.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          release = json.loads(Path('dist/release.json').read_text())
+          if release['isDraft'] or not release['publishedAt']:
+              raise SystemExit('The release must be published before updating the source.')
+          Path('dist/release-date.txt').write_text(release['publishedAt'])
+          Path('dist/release-notes.txt').write_text(release['body'] or '')
+          PY
+
+      - name: Update the public source branch
+        shell: bash
+        run: |
+          source_dir="$RUNNER_TEMP/autosign-source"
+          status=0
+          git ls-remote --exit-code --heads origin source > "$RUNNER_TEMP/source-ref" || status=$?
+          if [ "$status" -eq 0 ]; then
+            git fetch origin refs/heads/source:refs/remotes/origin/source
+            git worktree add --detach "$source_dir" origin/source
+          elif [ "$status" -eq 2 ]; then
+            git worktree add --detach "$source_dir" HEAD
+            git -C "$source_dir" switch --orphan source
+          else
+            exit "$status"
+          fi
+          args=()
+          if [ -f "$source_dir/apps.json" ]; then
+            args+=(--previous-source "$source_dir/apps.json")
+          fi
+          python3 Scripts/generate-source.py \
+            --ipa dist/AutoSignStore.ipa --repository "$GITHUB_REPOSITORY" \
+            --tag "$GITHUB_REF_NAME" --date "$(cat dist/release-date.txt)" \
+            --notes-file dist/release-notes.txt --output "$source_dir/apps.json" \
+            "${args[@]}"
+          cp AutoSignStore/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png "$source_dir/icon.png"
+          git -C "$source_dir" config user.name 'github-actions[bot]'
+          git -C "$source_dir" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$source_dir" add apps.json icon.png
+          if ! git -C "$source_dir" diff --cached --quiet; then
+            git -C "$source_dir" commit -m "Publish source for $GITHUB_REF_NAME"
+            git -C "$source_dir" push origin HEAD:refs/heads/source
+          fi
+          printf 'Source: https://raw.githubusercontent.com/%s/source/apps.json\n' "$GITHUB_REPOSITORY" >> "$GITHUB_STEP_SUMMARY"
