@@ -25,7 +25,7 @@ struct ActivityView: View {
                         VStack(alignment: .leading, spacing: 17) {
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Label(job.state == .running ? (job.installRequest == nil ? "正在刷新" : "正在安装") : job.state.title, systemImage: job.state.symbol).font(.headline).foregroundStyle(job.state.color)
+                                    Label(job.state == .running ? (job.updateRequest != nil ? "正在更新" : (job.installRequest == nil ? "正在刷新" : "正在安装")) : job.state.title, systemImage: job.state.symbol).font(.headline).foregroundStyle(job.state.color)
                                     Text(job.createdAt.formatted(date: .abbreviated, time: .shortened))
                                         .font(.caption).foregroundStyle(.secondary)
                                 }

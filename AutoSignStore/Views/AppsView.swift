@@ -14,6 +14,7 @@ struct AppsView: View {
                     connectionPill
                     summary
                     if model.devices.count > 0 { devicePicker }
+                    if model.supportsUpdates { updatesSection }
                     if let job = model.activeJob, !job.state.isTerminal {
                         Button { model.selectedTab = 1 } label: {
                             StoreCard {
@@ -148,6 +149,64 @@ struct AppsView: View {
         }.padding(.horizontal, 3)
     }
 
+    private var updatesSection: some View {
+        StoreCard {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Label(model.updates.isEmpty ? "应用更新" : "\(model.updates.count) 个应用可更新", systemImage: "arrow.down.circle.fill")
+                        .font(.headline).foregroundStyle(StoreTheme.accent)
+                    Spacer()
+                    Button { Task { await model.checkUpdates() } } label: {
+                        if model.isCheckingUpdates { ProgressView().controlSize(.small) }
+                        else { Text("检查更新").font(.caption.bold()) }
+                    }.disabled(!model.canManageSources || model.isLoading)
+                }
+                if model.updates.isEmpty {
+                    Text(model.selectedDeviceID.isEmpty ? "请选择本机设备查看更新。" : (model.snapshot?.sourceCheck?.checkedAt == nil ? "Mac 将自动检查已订阅的源，也可以立即检查。" : "暂无可用更新"))
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+                ForEach(model.updates) { update in
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(update.name).font(.subheadline.bold())
+                            Text("v\(update.installedVersion) → v\(update.displayVersion)")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("更新") { Task { await model.updateApps([update]) } }
+                            .buttonStyle(.bordered).disabled(!model.canUpdate)
+                    }
+                }
+                if !model.updates.isEmpty {
+                    Button {
+                        Task { await model.updateApps(Array(model.updates.prefix(50))) }
+                    } label: {
+                        Label(model.updates.count > 50 ? "更新前 50 个应用" : "一键更新全部", systemImage: "arrow.down.to.line")
+                            .frame(maxWidth: .infinity).padding(.vertical, 6)
+                    }.buttonStyle(.borderedProminent).disabled(!model.canUpdate)
+                    Text("保留原应用标识和签名团队 · Store 自身最后更新")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                if let check = model.snapshot?.sourceCheck {
+                    if let date = check.checkedAt {
+                        Text("上次检查 \(date.formatted(date: .abbreviated, time: .shortened))")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
+                    if !check.errors.isEmpty {
+                        Text("\(check.errors.count) 个源检查失败，保留上次结果。请稍后重试。")
+                            .font(.caption).foregroundStyle(.orange)
+                    }
+                    Text(check.automatic ? "Mac 运行时每 30 分钟检查；打开 Store 自动同步提示。" : "Mac 已关闭自动检查，可点击“检查更新”。")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                if !model.isConnected {
+                    Text("Mac 离线，显示上次同步的更新；重新连接后可更新。")
+                        .font(.caption).foregroundStyle(.orange)
+                }
+            }
+        }
+    }
+
     private var appsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -191,6 +250,9 @@ struct AppsView: View {
                 }
                 Text("v\(app.version) · \(app.expiration.formatted(date: .abbreviated, time: .omitted)) 到期")
                     .font(.caption).foregroundStyle(.secondary)
+                if let update = model.updates.first(where: { $0.id == app.id }) {
+                    Text("新版本 v\(update.displayVersion)").font(.caption.bold()).foregroundStyle(StoreTheme.accent)
+                }
             }
             Spacer(minLength: 0)
             VStack(spacing: 3) {
@@ -235,6 +297,16 @@ private struct AppDetailView: View {
                     LabeledContent("最近安装", value: app.refreshedAt.formatted(date: .abbreviated, time: .shortened))
                 }
                 Section {
+                    if let update = model.updates.first(where: { $0.id == app.id }) {
+                        Button {
+                            dismiss()
+                            Task { await model.updateApps([update]) }
+                        } label: { Label("更新至 v\(update.displayVersion)", systemImage: "arrow.down.circle") }
+                            .disabled(!model.canUpdate)
+                        if let notes = update.localizedDescription, !notes.isEmpty {
+                            Text(notes).font(.subheadline).foregroundStyle(.secondary)
+                        }
+                    }
                     Button {
                         dismiss()
                         Task { await model.refresh([app]) }

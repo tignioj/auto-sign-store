@@ -79,7 +79,7 @@ struct ConnectionView: View {
                 guide("arrow.clockwise", "Store 自身也能刷新", "先用新版 AutoSign 安装 Store IPA。刷新自身时应用可能退出，Mac 会继续完成安装。")
             }
             Section {
-                Text("AutoSign Store 1.1 · iOS 17+").font(.caption).foregroundStyle(.secondary)
+                Text("AutoSign Store 1.2 · iOS 17+").font(.caption).foregroundStyle(.secondary)
                 Text("续签会向 Apple 请求新描述文件。免费账号刷新成功后获得新 7 天签名；未签发新文件时会显示失败。Mac 上的 Xcode 账号需要保持有效。")
                     .font(.caption).foregroundStyle(.secondary)
             }

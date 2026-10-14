@@ -17,6 +17,7 @@ final class StoreModel: ObservableObject {
     @Published private(set) var sources: [SavedAppSource] = []
     @Published private(set) var isManagingSources = false
     @Published private(set) var sourceError: String?
+    @Published private(set) var isCheckingUpdates = false
     @Published var selectedTab = 0
     @Published var includeSelf = true
     private var savedAddress: String
@@ -61,10 +62,15 @@ final class StoreModel: ObservableObject {
     var needsAttention: Int { apps.filter { $0.remainingDays() <= 1 }.count }
     var serverName: String { snapshot?.serverName ?? "你的 Mac" }
     var supportsSources: Bool { snapshot?.capabilities?.contains("sources") == true }
-    var canManageSources: Bool { isConnected && supportsSources && !isManagingSources && !isRefreshing }
+    var supportsUpdates: Bool { snapshot?.capabilities?.contains("updates") == true }
+    var updates: [StoreAppUpdate] {
+        (snapshot?.availableUpdates ?? []).filter { $0.deviceUDID == selectedDeviceID }
+    }
+    var canManageSources: Bool { isConnected && supportsSources && !isLoading && !isManagingSources && !isRefreshing && !isCheckingUpdates }
     var canInstall: Bool { canRefresh && snapshot?.capabilities?.contains("install") == true }
-    var canRefresh: Bool { isConnected && currentDevice?.isReady == true && !isRefreshing && !isManagingSources }
-    var canChangeConnection: Bool { !isLoading && !isSubmitting && !isManagingSources && (!isRefreshing || !isConnected) }
+    var canRefresh: Bool { isConnected && currentDevice?.isReady == true && !isLoading && !isRefreshing && !isManagingSources && !isCheckingUpdates }
+    var canUpdate: Bool { canRefresh && supportsUpdates }
+    var canChangeConnection: Bool { !isLoading && !isSubmitting && !isManagingSources && !isCheckingUpdates && (!isRefreshing || !isConnected) }
 
     func pair() async {
         guard canChangeConnection else { return }
@@ -93,12 +99,49 @@ final class StoreModel: ObservableObject {
         } catch { self.error = error.localizedDescription }
     }
 
-    func sync() async {
-        guard let client, !isLoading else { return }
+    func sync(reportErrors: Bool = true) async {
+        guard let client, !isLoading, !isCheckingUpdates, !isSubmitting || reportErrors else { return }
         isLoading = true
         defer { isLoading = false }
-        do { accept(try await client.snapshot()); error = nil; await loadSources(); resumePolling() }
-        catch { isConnected = false; self.error = connectionMessage(error) }
+        do {
+            accept(try await client.snapshot())
+            if reportErrors { error = nil }
+            await loadSources()
+            resumePolling()
+        } catch {
+            isConnected = false
+            if reportErrors { self.error = connectionMessage(error) }
+        }
+    }
+
+    func checkUpdates() async {
+        guard let client, supportsUpdates, canManageSources, !isLoading else { return }
+        isCheckingUpdates = true; error = nil
+        defer { isCheckingUpdates = false }
+        do {
+            accept(try await client.checkUpdates())
+            await loadSources()
+            resumePolling()
+        } catch { self.error = connectionMessage(error) }
+    }
+
+    func updateApps(_ selection: [StoreAppUpdate]) async {
+        guard let client, canUpdate, !selection.isEmpty,
+              selection.allSatisfy({ $0.deviceUDID == selectedDeviceID }) else { return }
+        isSubmitting = true; error = nil
+        defer { isSubmitting = false }
+        let id = UUID().uuidString
+        do { try journal.save(id, for: savedAddress) }
+        catch { self.error = "无法保存更新任务：\(error.localizedDescription)"; return }
+        requestID = id
+        let request = RefreshRequest(requestID: id, deviceUDID: selectedDeviceID, appIDs: selection.map(\.id))
+        selectedTab = 1
+        do { activeJob = try await client.updateApps(request); stopPolling(); resumePolling() }
+        catch {
+            let message = "\(connectionMessage(error)) 如果请求已送达，Mac 会继续更新；重新连接后可在活动中查看。"
+            await sync()
+            self.error = message
+        }
     }
 
     func refresh(_ selection: [StoreApp]) async {
@@ -116,6 +159,7 @@ final class StoreModel: ObservableObject {
         let request = RefreshRequest(requestID: id, deviceUDID: selectedDeviceID, appIDs: selection.map(\.id))
         do {
             activeJob = try await client.refresh(request)
+            stopPolling()
             resumePolling()
         } catch {
             let message = "\(connectionMessage(error)) 如果请求已送达，Mac 会继续执行；重新连接后可在活动中查看。"
@@ -162,7 +206,7 @@ final class StoreModel: ObservableObject {
         let request = StoreInstallRequest(requestID: id, deviceUDID: selectedDeviceID,
                                           sourceURL: source.id, bundleIdentifier: app.id)
         selectedTab = 1
-        do { activeJob = try await client.install(request); resumePolling() }
+        do { activeJob = try await client.install(request); stopPolling(); resumePolling() }
         catch {
             let message = "\(connectionMessage(error)) 如果请求已送达，Mac 会继续安装；重新连接后可在活动中查看。"
             await sync()
@@ -209,7 +253,7 @@ final class StoreModel: ObservableObject {
     }
 
     private func resumePolling() {
-        guard isForeground, pollTask == nil, let client, let job = activeJob, !job.state.isTerminal else { return }
+        guard isForeground, pollTask == nil, let client else { return }
         let expectedAddress = savedAddress
         let generation = UUID()
         pollGeneration = generation
@@ -217,22 +261,25 @@ final class StoreModel: ObservableObject {
             defer { if self?.pollGeneration == generation { self?.pollTask = nil } }
             while !Task.isCancelled {
                 do {
-                    try await Task.sleep(for: .seconds(2))
-                    let updated = try await client.job(job.id)
+                    let busy = self?.isRefreshing == true && self?.isConnected == true
+                    try await Task.sleep(for: .seconds(busy ? 2 : 30))
                     guard let self, !Task.isCancelled, self.savedAddress == expectedAddress,
                           self.pollGeneration == generation else { return }
-                    self.activeJob = updated
-                    self.isConnected = true
-                    if updated.state.isTerminal {
-                        self.accept(try await client.snapshot())
-                        return
+                    if let job = self.activeJob, !job.state.isTerminal {
+                        let updated = try await client.job(job.id)
+                        guard !Task.isCancelled, self.pollGeneration == generation else { return }
+                        self.activeJob = updated
+                        self.isConnected = true
+                        if updated.state.isTerminal { await self.sync(reportErrors: false) }
+                    } else {
+                        await self.sync(reportErrors: false)
                     }
                 } catch is CancellationError { return }
                 catch {
                     guard let self, !Task.isCancelled, self.pollGeneration == generation else { return }
+                    if self.isConnected { self.error = self.connectionMessage(error) }
                     self.isConnected = false
-                    self.error = self.connectionMessage(error)
-                    return
+                    // Stay alive while foreground so a returning Mac reconnects automatically.
                 }
             }
         }

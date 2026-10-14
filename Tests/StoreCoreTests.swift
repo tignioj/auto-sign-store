@@ -129,11 +129,45 @@ struct ClientContractTests {
 }
 
 extension ClientContractTests {
+    @Test func checksUpdatesWithAuthenticationAndDecodesVersionAndCheckFailures() async throws {
+        MockProtocol.handler = { request in
+            #expect(request.url?.path == "/v1/updates/check")
+            #expect(request.httpMethod == "POST")
+            #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer test-token")
+            return (200, Data(#"{"protocolVersion":1,"serverName":"Mac","devices":[],"apps":[],"recentJobs":[],"capabilities":["updates"],"availableUpdates":[{"id":"app","deviceUDID":"phone","name":"Demo","installedVersion":"1.0","version":"2.0","buildVersion":"20","sourceURL":"https://source.test/apps.json","bundleIdentifier":"com.publisher.demo","checkedAt":"2026-10-14T12:00:00Z"}],"sourceCheck":{"automatic":true,"interval":1800,"checkedAt":"2026-10-14T12:00:00Z","isChecking":false,"errors":{"https://other.test/apps.json":"offline"}}}"#.utf8))
+        }
+        let snapshot = try await client().checkUpdates()
+        #expect(snapshot.availableUpdates?.first?.displayVersion == "2.0 (20)")
+        #expect(snapshot.sourceCheck?.errors.count == 1)
+        #expect(snapshot.sourceCheck?.interval == 1_800)
+    }
+
+    @Test func postsOneBatchUpdateWithStableRequestAndRestoresItsKind() async throws {
+        let input = RefreshRequest(requestID: UUID().uuidString, deviceUDID: "phone", appIDs: ["demo", "store"])
+        MockProtocol.handler = { request in
+            #expect(request.url?.path == "/v1/updates")
+            #expect(request.httpMethod == "POST")
+            #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer test-token")
+            let sent = try StoreJSON.decoder().decode(RefreshRequest.self, from: requestData(request))
+            #expect(sent.requestID == input.requestID)
+            #expect(sent.appIDs == input.appIDs)
+            let job = RefreshJob(id: UUID().uuidString, requestID: input.requestID, deviceUDID: input.deviceUDID,
+                state: .queued, items: [], createdAt: Date(), updatedAt: Date(), updateRequest: input)
+            return (202, try StoreJSON.encoder().encode(job))
+        }
+        let job = try await client().updateApps(input)
+        #expect(job.updateRequest?.requestID == input.requestID)
+        #expect(job.installRequest == nil)
+    }
+
     @Test func oldServersRemainCompatibleWithoutSourceCapabilities() async throws {
         MockProtocol.handler = { _ in
             (200, Data(#"{"protocolVersion":1,"serverName":"Old Mac","devices":[],"apps":[],"recentJobs":[]}"#.utf8))
         }
-        #expect(try await client().snapshot().capabilities == nil)
+        let snapshot = try await client().snapshot()
+        #expect(snapshot.capabilities == nil)
+        #expect(snapshot.availableUpdates == nil)
+        #expect(snapshot.sourceCheck == nil)
     }
 
     @Test func sourceAPIUsesAuthAndReturnsNormalizedCatalog() async throws {
@@ -195,5 +229,13 @@ private func requestData(_ request: URLRequest) throws -> Data {
     let json = #"{"id":"id","requestID":"request","deviceUDID":"phone","state":"completed","items":[],"createdAt":"2026-10-14T12:00:00Z","updatedAt":"2026-10-14T12:00:00Z"}"#
     let job = try StoreJSON.decoder().decode(RefreshJob.self, from: Data(json.utf8))
     #expect(job.installRequest == nil)
+    #expect(job.updateRequest == nil)
     #expect(job.state == .completed)
+}
+
+@Test func installedAppsWithoutBuildMetadataRemainReadable() throws {
+    let json = #"{"id":"app","deviceUDID":"phone","name":"App","bundleIdentifier":"com.example.app","version":"1.0","expiration":"2026-10-14T12:00:00Z","refreshedAt":"2026-10-14T12:00:00Z","isStore":false}"#
+    let app = try StoreJSON.decoder().decode(StoreApp.self, from: Data(json.utf8))
+    #expect(app.buildVersion == nil)
+    #expect(app.version == "1.0")
 }

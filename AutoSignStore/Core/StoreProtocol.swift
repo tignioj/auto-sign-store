@@ -17,6 +17,7 @@ public struct StoreApp: Codable, Identifiable, Sendable {
     public let expiration: Date
     public let refreshedAt: Date
     public let isStore: Bool
+    public var buildVersion: String? = nil
 
     public func remainingDays(at date: Date = Date()) -> Int {
         max(0, Int(ceil(expiration.timeIntervalSince(date) / 86_400)))
@@ -45,6 +46,7 @@ public struct RefreshJob: Codable, Identifiable, Sendable {
     public var createdAt: Date
     public var updatedAt: Date
     public var installRequest: StoreInstallRequest? = nil
+    public var updateRequest: RefreshRequest? = nil
 }
 
 public struct StoreSnapshot: Codable, Sendable {
@@ -54,6 +56,32 @@ public struct StoreSnapshot: Codable, Sendable {
     public let apps: [StoreApp]
     public let recentJobs: [RefreshJob]
     public var capabilities: [String]? = nil
+    public var availableUpdates: [StoreAppUpdate]? = nil
+    public var sourceCheck: SourceCheckStatus? = nil
+}
+
+public struct StoreAppUpdate: Codable, Identifiable, Sendable {
+    public let id: String
+    public let deviceUDID: String
+    public let name: String
+    public let installedVersion: String
+    public let version: String
+    public let buildVersion: String?
+    public let sourceURL: String
+    public let bundleIdentifier: String
+    public let checkedAt: Date
+    public let localizedDescription: String?
+    public var installedBuildVersion: String? = nil
+
+    public var displayVersion: String { buildVersion.map { "\(version) (\($0))" } ?? version }
+}
+
+public struct SourceCheckStatus: Codable, Sendable {
+    public let automatic: Bool
+    public let interval: TimeInterval
+    public let checkedAt: Date?
+    public let isChecking: Bool
+    public let errors: [String: String]
 }
 
 public struct RefreshRequest: Codable, Sendable {

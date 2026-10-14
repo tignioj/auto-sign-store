@@ -74,6 +74,14 @@ public struct StoreClient: Sendable {
         try await send(path: "v1/refresh", body: StoreJSON.encoder().encode(request))
     }
 
+    public func checkUpdates() async throws -> StoreSnapshot {
+        try await send(path: "v1/updates/check", body: Data("{}".utf8))
+    }
+
+    public func updateApps(_ request: RefreshRequest) async throws -> RefreshJob {
+        try await send(path: "v1/updates", body: StoreJSON.encoder().encode(request))
+    }
+
     func sources() async throws -> [SavedAppSource] {
         try await send(path: "v1/sources")
     }

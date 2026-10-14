@@ -6,7 +6,7 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $model.selectedTab) {
             NavigationStack { AppsView(model: model) }
-                .tabItem { Label("我的应用", systemImage: "square.grid.2x2.fill") }.tag(0)
+                .tabItem { Label("我的应用", systemImage: "square.grid.2x2.fill") }.badge(model.updates.count).tag(0)
             NavigationStack { SourcesView(model: model) }
                 .tabItem { Label("应用源", systemImage: "shippingbox.fill") }.tag(3)
             NavigationStack { ActivityView(model: model) }
