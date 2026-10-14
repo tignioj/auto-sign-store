@@ -127,3 +127,73 @@ struct ClientContractTests {
     #expect(try first.load(for: "http://one.local:8091") == id)
     #expect(try first.load(for: "http://two.local:8091") == "another")
 }
+
+extension ClientContractTests {
+    @Test func oldServersRemainCompatibleWithoutSourceCapabilities() async throws {
+        MockProtocol.handler = { _ in
+            (200, Data(#"{"protocolVersion":1,"serverName":"Old Mac","devices":[],"apps":[],"recentJobs":[]}"#.utf8))
+        }
+        #expect(try await client().snapshot().capabilities == nil)
+    }
+
+    @Test func sourceAPIUsesAuthAndReturnsNormalizedCatalog() async throws {
+        MockProtocol.handler = { request in
+            #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer test-token")
+            #expect(["/v1/sources", "/v1/sources/refresh", "/v1/sources/remove"].contains(request.url?.path))
+            if request.httpMethod == "POST" {
+                let input = try StoreJSON.decoder().decode(StoreSourceRequest.self, from: requestData(request))
+                #expect(input.url == "https://source.test/apps.json")
+            }
+            return (200, Data(#"[{"url":"https://source.test/apps.json","updatedAt":"2026-10-14T12:00:00Z","catalog":{"name":"Demo Source","apps":[{"name":"Demo","bundleIdentifier":"com.example.demo","versions":[{"version":"2","downloadURL":"https://source.test/demo.ipa"}]}]}}]"#.utf8))
+        }
+        let api = try client()
+        #expect(try await api.sources().first?.catalog.name == "Demo Source")
+        #expect(try await api.saveSource("https://source.test/apps.json").first?.catalog.apps.first?.latestVersion?.version == "2")
+        #expect(try await api.saveSource("https://source.test/apps.json", refresh: true).count == 1)
+        #expect(try await api.removeSource("https://source.test/apps.json").count == 1)
+    }
+
+    @Test func installContractPreservesRequestForRecoveryAndSendsOnlySourceSelection() async throws {
+        let input = StoreInstallRequest(requestID: UUID().uuidString, deviceUDID: "phone", sourceURL: "https://source.test/apps.json", bundleIdentifier: "com.example.demo")
+        MockProtocol.handler = { request in
+            #expect(request.httpMethod == "POST")
+            #expect(request.url?.path == "/v1/install")
+            #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer test-token")
+            #expect(try StoreJSON.decoder().decode(StoreInstallRequest.self, from: requestData(request)) == input)
+            let job = RefreshJob(id: UUID().uuidString, requestID: input.requestID, deviceUDID: input.deviceUDID,
+                state: .queued, items: [], createdAt: Date(), updatedAt: Date(), installRequest: input)
+            return (202, try StoreJSON.encoder().encode(job))
+        }
+        let result = try await client().install(input)
+        #expect(result.installRequest == input)
+    }
+
+    @Test func sourceAndInstallFailuresPropagateToCaller() async throws {
+        MockProtocol.handler = { _ in (409, Data(#"{"message":"Mac 正在处理任务"}"#.utf8)) }
+        await #expect(throws: StoreClientError.self) { try await client().saveSource("https://source.test/apps.json") }
+        let input = StoreInstallRequest(requestID: UUID().uuidString, deviceUDID: "phone", sourceURL: "https://source.test/apps.json", bundleIdentifier: "com.example.demo")
+        await #expect(throws: StoreClientError.self) { try await client().install(input) }
+    }
+}
+
+private func requestData(_ request: URLRequest) throws -> Data {
+    if let body = request.httpBody { return body }
+    let stream = try #require(request.httpBodyStream)
+    stream.open()
+    defer { stream.close() }
+    var data = Data()
+    var buffer = [UInt8](repeating: 0, count: 1024)
+    while stream.hasBytesAvailable {
+        let read = stream.read(&buffer, maxLength: buffer.count)
+        if read <= 0 { break }
+        data.append(buffer, count: read)
+    }
+    return data
+}
+
+@Test func legacyRefreshJobsDecodeAfterInstallSupportIsAdded() throws {
+    let json = #"{"id":"id","requestID":"request","deviceUDID":"phone","state":"completed","items":[],"createdAt":"2026-10-14T12:00:00Z","updatedAt":"2026-10-14T12:00:00Z"}"#
+    let job = try StoreJSON.decoder().decode(RefreshJob.self, from: Data(json.utf8))
+    #expect(job.installRequest == nil)
+    #expect(job.state == .completed)
+}

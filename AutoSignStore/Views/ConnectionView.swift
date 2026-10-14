@@ -13,7 +13,7 @@ struct ConnectionView: View {
                         .font(.system(size: 38)).foregroundStyle(StoreTheme.accent)
                     VStack(alignment: .leading, spacing: 5) {
                         Text(model.isConnected ? model.serverName : "连接你的 Mac").font(.headline)
-                        Text(model.isConnected ? "局域网服务已连接" : "同一 Wi-Fi，随时续签")
+                        Text(model.isConnected ? "局域网服务已连接" : "同一 Wi-Fi，安装与续签")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                 }.padding(.vertical, 10)
@@ -39,7 +39,7 @@ struct ConnectionView: View {
                 }
                 Button("重新搜索") { discovery.stop(); discovery.start() }
             } header: { Text("附近的 AutoSign") }
-              footer: { Text("在 Mac 的 AutoSign 中开启“手机续签”服务。首次使用时请允许本地网络访问。") }
+              footer: { Text("在 Mac 的 AutoSign 中开启“手机安装与续签”服务。首次使用时请允许本地网络访问。") }
             Section {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Mac 地址").font(.caption).foregroundStyle(.secondary)
@@ -79,7 +79,7 @@ struct ConnectionView: View {
                 guide("arrow.clockwise", "Store 自身也能刷新", "先用新版 AutoSign 安装 Store IPA。刷新自身时应用可能退出，Mac 会继续完成安装。")
             }
             Section {
-                Text("AutoSign Store 1.0 · iOS 17+").font(.caption).foregroundStyle(.secondary)
+                Text("AutoSign Store 1.1 · iOS 17+").font(.caption).foregroundStyle(.secondary)
                 Text("续签会向 Apple 请求新描述文件。免费账号刷新成功后获得新 7 天签名；未签发新文件时会显示失败。Mac 上的 Xcode 账号需要保持有效。")
                     .font(.caption).foregroundStyle(.secondary)
             }

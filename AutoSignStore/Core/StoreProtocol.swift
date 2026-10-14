@@ -44,6 +44,7 @@ public struct RefreshJob: Codable, Identifiable, Sendable {
     public var items: [RefreshItem]
     public var createdAt: Date
     public var updatedAt: Date
+    public var installRequest: StoreInstallRequest? = nil
 }
 
 public struct StoreSnapshot: Codable, Sendable {
@@ -52,6 +53,7 @@ public struct StoreSnapshot: Codable, Sendable {
     public let devices: [StoreDevice]
     public let apps: [StoreApp]
     public let recentJobs: [RefreshJob]
+    public var capabilities: [String]? = nil
 }
 
 public struct RefreshRequest: Codable, Sendable {
@@ -63,6 +65,24 @@ public struct RefreshRequest: Codable, Sendable {
         self.requestID = requestID
         self.deviceUDID = deviceUDID
         self.appIDs = appIDs
+    }
+}
+
+public struct StoreSourceRequest: Codable, Sendable {
+    public let url: String
+}
+
+public struct StoreInstallRequest: Codable, Equatable, Sendable {
+    public let requestID: String
+    public let deviceUDID: String
+    public let sourceURL: String
+    public let bundleIdentifier: String
+
+    public init(requestID: String, deviceUDID: String, sourceURL: String, bundleIdentifier: String) {
+        self.requestID = requestID
+        self.deviceUDID = deviceUDID
+        self.sourceURL = sourceURL
+        self.bundleIdentifier = bundleIdentifier
     }
 }
 

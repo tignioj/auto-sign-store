@@ -16,8 +16,8 @@ struct ActivityView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 if visibleJobs.isEmpty {
-                    ContentUnavailableView("还没有刷新记录", systemImage: "clock.arrow.circlepath",
-                        description: Text("在“我的应用”发起刷新后，这里会显示 Mac 的执行进度与结果。"))
+                    ContentUnavailableView("还没有任务记录", systemImage: "clock.arrow.circlepath",
+                        description: Text("安装应用或刷新签名后，这里会显示 Mac 的执行进度与结果。"))
                         .padding(.top, 70)
                 }
                 ForEach(visibleJobs) { job in
@@ -25,7 +25,7 @@ struct ActivityView: View {
                         VStack(alignment: .leading, spacing: 17) {
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Label(job.state.title, systemImage: job.state.symbol).font(.headline).foregroundStyle(job.state.color)
+                                    Label(job.state == .running ? (job.installRequest == nil ? "正在刷新" : "正在安装") : job.state.title, systemImage: job.state.symbol).font(.headline).foregroundStyle(job.state.color)
                                     Text(job.createdAt.formatted(date: .abbreviated, time: .shortened))
                                         .font(.caption).foregroundStyle(.secondary)
                                 }

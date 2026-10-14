@@ -1,6 +1,6 @@
 # AutoSign Store
 
-原生 SwiftUI iPhone / iPad 客户端，通过同一局域网中的 [AutoSign](https://github.com/tignioj/auto-sign) Mac 为应用重新签名并覆盖安装，包括 AutoSign Store 自身。
+原生 SwiftUI iPhone / iPad 客户端，通过同一局域网中的 [AutoSign](https://github.com/tignioj/auto-sign) Mac 为应用重新签名并覆盖安装，包括 AutoSign Store 自身。支持在手机管理应用源、浏览应用，并让 Mac 自动下载、签名及安装。
 
 ## 从源安装
 
@@ -12,7 +12,24 @@ https://raw.githubusercontent.com/tignioj/auto-sign-store/source/apps.json
 
 选择 AutoSign Store，点击 **下载最新 IPA**，确认设备、证书和描述文件后签名安装。源中的 IPA 是未签名真机包，由 Mac 使用你自己的开发者身份签名；最低 iOS / iPadOS 17。也可以从 [GitHub Releases](https://github.com/tignioj/auto-sign-store/releases) 下载 `AutoSignStore.ipa`。
 
-源只负责提供安装包。安装后的连接与续签步骤见下文；升级 Store 时需刷新源、下载新版，再覆盖安装。
+首次安装 Store 需要 Mac。安装后可直接在手机“应用源”中刷新 Store 源并安装新版，由 Mac 完成下载和覆盖安装。
+
+## 手机源管理与安装（Store 1.1.0 / Mac 1.3.0）
+
+两端都需要更新到此版本。本地构建产物为 `../auto-sign/dist/AutoSign.app` 和 `dist/AutoSignStore.ipa`；正式发布前，公开源仍指向已发布版本。
+
+1. 在 Mac 运行新版 AutoSign，确认 Xcode 已登录、选好签名证书和描述文件，开启“AutoSign Store · 手机安装与续签”服务。
+2. 手机配对 Mac，在“应用源”点击 **添加源**，输入 AltStore / SideStore JSON 地址；可快捷填写 Kazumi 或 Store 源。
+3. 打开源，搜索或浏览应用，查看版本、大小、系统要求和更新说明。在应用详情核对目标设备，点击 **安装到设备**。
+4. 在“活动”查看检查源、下载、配置签名、安装及最终结果。成功后应用进入“我的应用”，以后可直接刷新签名。
+
+源订阅与缓存保存在 Mac，与 Mac 的“从源获取”共用。长按源可刷新或移除，左滑也可移除。源刷新失败保留原列表；手机离线显示上次同步内容。移除源不卸载应用，也不移除已安装应用的续签资料。
+
+Mac 在安装前必须重新获取最新源，并检查下载大小、IPA 完整性和真实 Bundle ID。首次安装使用 Mac 选定的签名团队，为不同应用生成独立、稳定的团队专属标识，避免复用 Store 的标识或申请发布者已占用的标识。升级受管理应用时沿用原标识及团队，也能识别旧版手动安装时被改写标识的原始 IPA。源中最新版本始终取 `versions` 第一项；用户点安装后源有更新时，实际安装版本以任务结果为准。
+
+任务在返回 `202` 前先保存到 Mac；手机先保存请求编号。手机退出、网络响应丢失或升级 Store 自身导致退出后，重新连接可恢复结果。相同编号和参数返回原任务，安装与刷新编号不能混用；任务执行期间 Mac 拒绝其他手机任务。服务重启会将未完成任务标记为中断，需要用户重新发起，不会自动重复安装。
+
+签名使用原有 Xcode 流程，免费账号须获得新的 7 天描述文件才继续安装。Apple 账号、设备配对和开发者模式仍需有效。包含现有签名器不支持的扩展或权限的 IPA 会明确报错；这些任务不会显示安装成功。
 
 ## 已实现
 
@@ -91,7 +108,7 @@ python3 Scripts/generate-source.py --ipa dist/AutoSignStore.ipa \
 1. 在相邻 `auto-sign` 项目运行 `./Scripts/build-app.sh`，退出旧版后打开新生成的 `dist/AutoSign.app`。
 2. iPhone / iPad 先通过 USB 信任并配对 Mac，开启开发者模式。在 Finder 选中设备并启用“连接到 Wi-Fi 时显示此设备”。
 3. 在 AutoSign 添加上面的 Store 源并下载 IPA，或选择本地构建的 `AutoSignStore.ipa`，选择设备、签名证书及匹配的 Development / Ad Hoc 描述文件后安装。首次安装后根据系统要求信任开发者证书。
-4. Mac AutoSign 的“AutoSign Store · 手机续签”中开启局域网服务。
+4. Mac AutoSign 的“AutoSign Store · 手机安装与续签”中开启局域网服务。
 5. 手机进入“连接”，允许本地网络权限，选择发现的 Mac，粘贴 Mac 显示的配对密钥并连接。若发现失败，手动输入 `http://Mac的局域网IP:8091`。
 6. 在“我的应用”明确选择这台手机 / 平板。iOS 不提供通用的本机 UDID 读取接口，所以需要核对设备名称。
 7. 点击“刷新全部应用”，或点开应用详情进行单独刷新。应用列表来自此版本 AutoSign 的成功安装记录；旧版安装的应用需用新版覆盖安装一次。
@@ -117,8 +134,15 @@ Mac 端监听 TCP `8091`，广播 Bonjour `_autosign._tcp`。所有接口要求 
 | 方法 | 路径 | 内容 |
 | --- | --- | --- |
 | GET | `/v1/status` | 协议版本、Mac 名称、已配对设备、受管理应用、最近 30 个任务 |
+| GET | `/v1/sources` | 获取 Mac 保存的源及应用列表 |
+| POST | `/v1/sources` | 添加或更新 `{ "url": "源JSON地址" }`，返回源列表 |
+| POST | `/v1/sources/refresh` | 刷新指定 `{ "url": "源JSON地址" }`，返回源列表 |
+| POST | `/v1/sources/remove` | 移除指定 `{ "url": "源JSON地址" }`，返回剩余源列表 |
+| POST | `/v1/install` | 提交 `{ "requestID": "UUID", "deviceUDID": "设备UDID", "sourceURL": "已订阅源的规范地址", "bundleIdentifier": "源中的应用标识" }`，返回任务 |
 | POST | `/v1/refresh` | 提交 `{ "requestID": "UUID", "deviceUDID": "设备UDID", "appIDs": ["应用记录ID"] }`，返回任务 |
 | GET | `/v1/jobs/{任务UUID}` | 查询持久化的逐应用进度与安装结果 |
+
+状态接口可选的 `capabilities` 数组包含 `sources` 和 `install` 时支持手机源管理和安装；旧 Mac 未声明时客户端提示更新，续签仍可用。安装任务带可选 `installRequest`，复用现有任务查询及逐项状态结构。手机仅提交源和应用选择，不提交 Mac 文件路径、私钥、描述文件或下载内容。
 
 `appIDs` 为状态接口返回的记录 ID，不是 Bundle ID。每个任务限 1–50 个应用，只能包含同一设备的应用。Mac 串行执行刷新；忙碌返回 `409`。同一个请求编号与相同参数重复提交返回原任务；复用编号但改变参数返回 `409`。密钥错误返回 `401`。
 
@@ -137,7 +161,7 @@ cd ../auto-sign
 swift test
 ```
 
-客户端测试覆盖局域网地址校验、鉴权头、协议版本、错误传播、刷新请求及日期边界。Mac 测试覆盖 HTTP 分片 / 非法请求、真实 TCP 通信、自身最后刷新、请求幂等、跨设备拒绝和重启恢复。真实 Apple 续期与真机覆盖安装需要在自己的设备、Xcode 账号和描述文件环境中验证。
+客户端测试覆盖局域网地址校验、鉴权头、协议版本、错误传播、源管理及安装协议、旧服务兼容、刷新请求及日期边界。Mac 测试覆盖 HTTP 分片 / 非法请求、真实 TCP 通信、自身最后刷新、请求幂等、跨设备拒绝和重启恢复，也覆盖源增删刷新、安装任务先持久化、重新获取最新版本、幂等重试及失败结果。真实 Apple 续期与真机覆盖安装需要在自己的设备、Xcode 账号和描述文件环境中验证。
 
 参考：[AltServer 的 Wi-Fi 工作方式](https://faq.altstore.io/altstore-classic/altserver)、[Apple 本地网络权限](https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy)、[Apple 本地网络 ATS 配置](https://developer.apple.com/documentation/bundleresources/information-property-list/nsapptransportsecurity/nsallowslocalnetworking)。
 
@@ -170,3 +194,15 @@ Mac 已更新并运行 AutoSign 1.2.1 build 4，手机已安装 AutoSign Store 1
 已从手机读取描述文件列表，确认两份新 UUID 和到期时间确实在设备上；两款应用的安装位置均改变。Store 覆盖安装时退出，重开后保留配对和设备选择，自动恢复并显示两项成功结果；手机持久化请求编号与 Mac 完成任务匹配。Kazumi 续签后也实际打开成功。连续刷新会从本次签发时刻重新计算 7 天，不给旧到期时间额外累加 7 天。
 
 两端自动化测试共 48 项通过（Mac 39、iOS 核心 9）。本次机器可读记录：[`dist/DeviceTests/verification-7day.json`](dist/DeviceTests/verification-7day.json)，不包含配对密钥、私钥或账号凭据。
+
+## 手机源安装真机实测：2026-10-14
+
+已在 Mac 启动 AutoSign 1.3.0 build 5，并将 iPhone18pm（iPhone 18 Pro Max，iOS 27.0）上的 Store 从 1.0.1 build 3 覆盖更新至 1.1.0 build 4。CoreDevice 确认实际版本和新的安装位置，原配对及设备选择保留。
+
+通过真机 Store 的“添加源”新增 Kazumi 的 `refs/heads/kazumi` 公开源地址，浏览应用详情并点击“安装到 iPhone18pm”。手机提交任务后，Mac 重新获取源，从真实 GitHub Release 下载 30,463,104 字节 IPA，向 Apple 请求新描述文件，保留原 `com.tignioj.autosign.kazumi` 标识和签名团队，完成 Kazumi 2.3.8 build 20308 的签名及覆盖安装。
+
+任务于北京时间 21:01:33 创建，21:02:20 完成。新描述文件于 21:01:54 签发，到期时间为 **2026-10-21 21:01:54**，签名有效期 168 小时；UUID 与测试前不同。设备上的应用安装位置发生变化，Kazumi 随后通过手机镜像正常启动。测试前后 CoreDevice 的连接类型均为 `localNetwork`。
+
+执行中将 Store 切到后台，Mac 仍继续完成任务。重开 Store 后，“活动”显示安装成功，“我的应用”显示 Store 1.1.0 和 Kazumi 2.3.8；从真机读取的请求编号及缓存任务状态与 Mac 完成任务一致。测试新增的重复订阅随后从手机移除，原有 Kazumi 和 Store 源保持不变。
+
+本次是已安装 Kazumi 的真实源下载及覆盖安装验证，未额外安装其他新应用；首次安装时生成独立应用标识的分支由自动化测试覆盖。机器可读记录及截图保存在本地：[`verification-source-install.json`](dist/DeviceTests/verification-source-install.json)、[安装完成截图](dist/DeviceTests/source-install/04-install-completed.png)。记录不包含配对密钥、私钥或账号凭据。

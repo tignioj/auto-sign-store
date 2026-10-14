@@ -74,6 +74,22 @@ public struct StoreClient: Sendable {
         try await send(path: "v1/refresh", body: StoreJSON.encoder().encode(request))
     }
 
+    func sources() async throws -> [SavedAppSource] {
+        try await send(path: "v1/sources")
+    }
+
+    func saveSource(_ url: String, refresh: Bool = false) async throws -> [SavedAppSource] {
+        try await send(path: refresh ? "v1/sources/refresh" : "v1/sources", body: StoreJSON.encoder().encode(StoreSourceRequest(url: url)))
+    }
+
+    func removeSource(_ url: String) async throws -> [SavedAppSource] {
+        try await send(path: "v1/sources/remove", body: StoreJSON.encoder().encode(StoreSourceRequest(url: url)))
+    }
+
+    public func install(_ request: StoreInstallRequest) async throws -> RefreshJob {
+        try await send(path: "v1/install", body: StoreJSON.encoder().encode(request))
+    }
+
     public func job(_ id: String) async throws -> RefreshJob {
         guard UUID(uuidString: id) != nil else { throw StoreClientError.response("无效的任务编号。") }
         return try await send(path: "v1/jobs/\(id)")

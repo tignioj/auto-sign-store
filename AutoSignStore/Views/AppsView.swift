@@ -20,7 +20,7 @@ struct AppsView: View {
                                 HStack(spacing: 14) {
                                     ProgressView()
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text("Mac 正在刷新应用").font(.headline)
+                                        Text("Mac 正在处理应用").font(.headline)
                                         Text("\(job.items.filter { $0.state.isTerminal }.count) / \(job.items.count) 已处理 · 查看进度")
                                             .font(.caption).foregroundStyle(.secondary)
                                     }
@@ -63,8 +63,8 @@ struct AppsView: View {
             StoreCard {
                 VStack(alignment: .leading, spacing: 18) {
                     Image(systemName: "iphone.and.arrow.forward").font(.system(size: 42)).foregroundStyle(StoreTheme.accent)
-                    Text("手机点一下，Mac 帮你续签。").font(.title2.bold())
-                    Text("连接同一 Wi-Fi 中的 AutoSign，查看应用签名有效期，随时刷新。AutoSign Store 自己也可以续签。")
+                    Text("手机选应用，Mac 帮你安装。").font(.title2.bold())
+                    Text("连接同一 Wi-Fi 中的 AutoSign，添加应用源、选择应用，让 Mac 自动下载、签名并安装。安装后的应用和 Store 自身也可以随时续签。")
                         .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     Button { model.selectedTab = 2 } label: {
                         Label("连接我的 Mac", systemImage: "wifi").font(.headline)
@@ -73,9 +73,9 @@ struct AppsView: View {
                 }
             }
             VStack(alignment: .leading, spacing: 18) {
-                step("1", "在 Mac 开启服务", "打开 AutoSign 的“手机续签”局域网服务。")
+                step("1", "在 Mac 开启服务", "打开 AutoSign 的“手机安装与续签”局域网服务。")
                 step("2", "配对当前设备", "输入 Mac 显示的密钥，并核对这台 iPhone 或 iPad。")
-                step("3", "安装一次，随时刷新", "通过 AutoSign 安装应用后，就会出现在这里。")
+                step("3", "选择应用，自动安装", "在“应用源”选择应用，安装成功后可在这里续签。")
             }.padding(.horizontal, 4)
         }
     }
@@ -116,7 +116,7 @@ struct AppsView: View {
                 HStack(spacing: 9) {
                     if model.isRefreshing { ProgressView().tint(StoreTheme.accent) }
                     else { Image(systemName: "arrow.triangle.2.circlepath") }
-                    Text(model.isRefreshing ? "正在刷新…" : "刷新全部应用").fontWeight(.semibold)
+                    Text(model.isRefreshing ? "Mac 正在处理…" : "刷新全部应用").fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity).padding(.vertical, 15)
                 .foregroundStyle(StoreTheme.accent)
@@ -160,7 +160,7 @@ struct AppsView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Image(systemName: "tray").font(.title).foregroundStyle(.secondary)
                         Text(model.selectedDeviceID.isEmpty ? "先选择这台设备" : "还没有受管理的应用").font(.headline)
-                        Text("请在 Mac 上使用新版 AutoSign 安装 IPA，包含 Store 自身。安装成功后，下拉同步即可查看。这里显示 AutoSign 已确认安装的应用。")
+                        Text("在“应用源”添加源并选择应用，让 Mac 自动下载、签名和安装。安装成功后会显示在这里，也可以在 Mac 安装本地 IPA。")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
