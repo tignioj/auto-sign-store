@@ -1,0 +1,39 @@
+{
+  "name": "AutoSign Store",
+  "subtitle": "通过 AutoSign Mac 安装和刷新应用",
+  "iconURL": "https://raw.githubusercontent.com/tignioj/auto-sign-store/source/icon.png",
+  "website": "https://github.com/tignioj/auto-sign-store",
+  "tintColor": "#147061",
+  "featuredApps": [
+    "local.autosign.store"
+  ],
+  "apps": [
+    {
+      "name": "AutoSign Store",
+      "bundleIdentifier": "local.autosign.store",
+      "developerName": "tignioj",
+      "localizedDescription": "原生 iPhone / iPad 客户端，连接同一 Wi-Fi 中的 AutoSign Mac，查看应用签名到期时间，逐个或批量续签，包括 Store 自身。需要 Mac 运行 AutoSign。",
+      "iconURL": "https://raw.githubusercontent.com/tignioj/auto-sign-store/source/icon.png",
+      "tintColor": "#147061",
+      "category": "utilities",
+      "appPermissions": {
+        "entitlements": [],
+        "privacy": {
+          "NSLocalNetworkUsageDescription": "发现同一 Wi-Fi 中的 AutoSign Mac，为此设备上的应用及 AutoSign Store 自身刷新签名。"
+        }
+      },
+      "versions": [
+        {
+          "version": "1.0.1",
+          "buildVersion": "3",
+          "date": "2026-10-14T12:22:35Z",
+          "localizedDescription": "**Full Changelog**: https://github.com/tignioj/auto-sign-store/commits/v1.0.1",
+          "downloadURL": "https://github.com/tignioj/auto-sign-store/releases/download/v1.0.1/AutoSignStore.ipa",
+          "size": 323872,
+          "minOSVersion": "17.0"
+        }
+      ]
+    }
+  ],
+  "news": []
+}
