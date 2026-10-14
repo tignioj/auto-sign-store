@@ -63,6 +63,7 @@ final class StoreModel: ObservableObject {
     var serverName: String { snapshot?.serverName ?? "你的 Mac" }
     var supportsSources: Bool { snapshot?.capabilities?.contains("sources") == true }
     var supportsUpdates: Bool { snapshot?.capabilities?.contains("updates") == true }
+    var supportsProfileRefresh: Bool { snapshot?.capabilities?.contains("profile-refresh") == true }
     var updates: [StoreAppUpdate] {
         (snapshot?.availableUpdates ?? []).filter { $0.deviceUDID == selectedDeviceID }
     }

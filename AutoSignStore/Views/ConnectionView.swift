@@ -76,7 +76,7 @@ struct ConnectionView: View {
                 guide("cable.connector", "先通过 USB 配对", "解锁设备，信任 Mac，并在 Finder 启用“连接到 Wi-Fi 时显示此设备”。")
                 guide("hammer", "开启开发者模式", "前往设置 → 隐私与安全性 → 开发者模式，按系统提示重启。")
                 guide("checkmark.shield", "首次安装信任证书", "必要时在设置 → 通用 → VPN 与设备管理中信任开发者。")
-                guide("arrow.clockwise", "Store 自身也能刷新", "先用新版 AutoSign 安装 Store IPA。刷新自身时应用可能退出，Mac 会继续完成安装。")
+                guide("arrow.clockwise", "Store 自身也能刷新", "先用新版 AutoSign 安装 Store IPA。需覆盖安装时应用可能退出，Mac 会继续完成任务。")
             }
             Section {
                 Text("AutoSign Store 1.2 · iOS 17+").font(.caption).foregroundStyle(.secondary)

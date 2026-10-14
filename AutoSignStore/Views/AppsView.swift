@@ -231,10 +231,10 @@ struct AppsView: View {
             if model.apps.contains(where: \.isStore) {
                 Toggle("批量刷新包含 Store 自身", isOn: $model.includeSelf)
                     .font(.subheadline).padding(.horizontal, 4).disabled(model.isRefreshing)
-                Text("刷新自身时应用可能关闭。Mac 会继续安装，重新打开后可查看结果。")
+                Text(model.supportsProfileRefresh ? "优先更新签名，无需重装；需覆盖安装时 Store 可能关闭，重开可查看结果。" : "刷新自身时应用可能关闭。Mac 会继续安装，重新打开后可查看结果。")
                     .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
             }
-            Text("到期时间来自 Mac 最近成功安装的描述文件；离线时显示上次同步记录。")
+            Text("到期时间来自 Mac 最近成功验证的签名；离线时显示上次同步记录。")
                 .font(.caption2).foregroundStyle(.secondary).padding(.top, 4)
         }
     }
@@ -294,7 +294,7 @@ private struct AppDetailView: View {
                     }.padding(.vertical, 8)
                     LabeledContent("应用标识", value: app.bundleIdentifier).font(.caption).textSelection(.enabled)
                     LabeledContent("签名到期", value: app.expiration.formatted(date: .abbreviated, time: .shortened))
-                    LabeledContent("最近安装", value: app.refreshedAt.formatted(date: .abbreviated, time: .shortened))
+                    LabeledContent("最近签名", value: app.refreshedAt.formatted(date: .abbreviated, time: .shortened))
                 }
                 Section {
                     if let update = model.updates.first(where: { $0.id == app.id }) {
@@ -313,7 +313,7 @@ private struct AppDetailView: View {
                     } label: { Label(app.isStore ? "刷新 AutoSign Store 自身" : "刷新签名", systemImage: "arrow.clockwise") }
                     .disabled(!model.canRefresh)
                 } footer: {
-                    Text(app.isStore ? "Mac 会重新签名并覆盖安装 Store。应用可能关闭，重新打开后会恢复任务结果。" : "使用 Mac 保存的原始 IPA 覆盖安装，保持应用标识和签名团队一致。")
+                    Text(model.supportsProfileRefresh ? "Mac 优先更新签名，无需重装，并验证应用启动。不兼容时沿用原标识和团队覆盖安装，重开可恢复结果。" : (app.isStore ? "Mac 会重新签名并覆盖安装 Store。应用可能关闭，重新打开后会恢复任务结果。" : "使用 Mac 保存的原始 IPA 覆盖安装，保持应用标识和签名团队一致。"))
                 }
             }
             .navigationTitle("应用详情").navigationBarTitleDisplayMode(.inline)

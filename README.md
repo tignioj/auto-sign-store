@@ -1,6 +1,6 @@
 # AutoSign Store
 
-原生 SwiftUI iPhone / iPad 客户端，通过同一局域网中的 [AutoSign](https://github.com/tignioj/auto-sign) Mac 为应用重新签名并覆盖安装，包括 AutoSign Store 自身。支持在手机管理应用源、浏览应用，并让 Mac 自动下载、签名及安装。
+原生 SwiftUI iPhone / iPad 客户端，通过同一局域网中的 [AutoSign](https://github.com/tignioj/auto-sign) Mac 安装及续签应用，包括 AutoSign Store 自身。Mac 1.4.1 起续签优先只更新描述文件，不兼容时重新签名并覆盖安装。支持在手机管理应用源、浏览应用，并让 Mac 自动下载、签名及安装。
 
 ## 从源安装
 
@@ -44,9 +44,10 @@ Mac 在安装前必须重新获取最新源，并检查下载大小、IPA 完整
 - Mac 定时检查源新版本，手机显示更新徽标，支持单个和一键批量更新。
 - Bonjour 自动发现 Mac，也支持手动输入局域网 IP / `.local` 地址。
 - 配对密钥鉴权，手机密钥保存在钥匙串；Mac 可重置密钥。
-- 选择对应的已配对设备，查看受管理应用、版本、真实签名到期时间及最近安装时间。
+- 选择对应的已配对设备，查看受管理应用、版本、真实签名到期时间及最近签名时间。
 - 单个刷新、批量刷新，以及批量刷新是否包含 Store 自身的开关。
-- Store 自身始终最后安装；请求先写入本机，任务先写入 Mac，应用关闭后 Mac 仍继续执行。
+- Store 自身始终最后处理；请求先写入本机，任务先写入 Mac，应用关闭后 Mac 仍继续执行。
+- Mac 1.4.1 起刷新优先只更新描述文件并验证启动，不兼容时覆盖安装；旧 Store 仍兼容，更新后的界面按 `profile-refresh` 能力显示说明。
 - 应用重开、请求响应丢失后可根据请求编号恢复结果；重复请求编号不会重复执行。
 - 逐应用显示成功 / 失败 / 完整错误。Mac 1.2.1 起免费账号必须获得新 7 天描述文件才继续安装并显示成功。
 - Mac 服务重启后，将未完成任务标记为中断，保留已完成应用的结果。
@@ -128,9 +129,9 @@ python3 Scripts/generate-source.py --ipa dist/AutoSignStore.ipa \
 
 `Info.plist` 中的 `AutoSignStoreClient = true` 标记让 Mac 在签名后识别 Store，即使第一次安装时 Bundle ID 被描述文件重写，也能将它排在队尾。
 
-手机先保存 UUID 请求编号，Mac 将任务写入磁盘后返回 `202`，再依次调用 AutoSign 已有的 Xcode 描述文件续期和 `devicectl device install app` 流程。覆盖安装 Store 时 iOS 可能关闭它；无需让客户端保持运行。重新打开后，手机使用保存的请求编号查询 Mac 的历史任务。
+手机先保存 UUID 请求编号，Mac 将任务写入磁盘后返回 `202`，再依次通过 Xcode 获取新的描述文件。Mac 1.4.1 起优先单独安装描述文件，读回设备文件并核对有效期延长、安装位置与版本不变，再验证应用启动；不会主动结束运行中的 Store。不兼容时才调用 `devicectl device install app` 覆盖安装并验证启动，此时 iOS 可能关闭 Store；无需让客户端保持运行。重新打开后，手机使用保存的请求编号查询 Mac 的历史任务。
 
-这是**手机发起、Mac 签名和安装**的方案。Mac 需要保持开机并运行 AutoSign；手机和 Mac 需在可互访的同一网络中，Xcode 账号需要有效。刷新失败或 Mac 断线时不会伪造新的到期日期。Store 已掉签无法打开时，需要在 Mac 重新覆盖安装 Store。
+这是**手机发起、Mac 获取并更新签名**的方案。Mac 需要保持开机并运行 AutoSign；手机和 Mac 需在可互访的同一网络中，Xcode 账号需要有效。启动验证需要设备解锁；网络、锁定或验证失败不会更新成功记录，也不会盲目回退重装。系统不支持读回描述文件时，完整安装路径依据验证过的新签名包、安装响应及启动检查确认结果。Store 已掉签无法打开时，可先从 Mac 发起后台续签；无法直接恢复时再覆盖安装。
 
 当前版本提供手机手动刷新及 Mac 上已有的后台续签；没有依赖 iOS 定时后台唤醒来保证续签。Mac 1.2.1 起每次刷新会隔离匹配应用的 Xcode 缓存，向 Apple 请求新描述文件。免费账号成功后有效期为新签发时间起 7 天，不是给原到期日期累加 7 天；签发失败或返回旧文件时会报错并保留原安装。构建、网络传输和安装会占用少量时间。
 
@@ -207,6 +208,8 @@ Mac 已更新并运行 AutoSign 1.2.1 build 4，手机已安装 AutoSign Store 1
 已从手机读取描述文件列表，确认两份新 UUID 和到期时间确实在设备上；两款应用的安装位置均改变。Store 覆盖安装时退出，重开后保留配对和设备选择，自动恢复并显示两项成功结果；手机持久化请求编号与 Mac 完成任务匹配。Kazumi 续签后也实际打开成功。连续刷新会从本次签发时刻重新计算 7 天，不给旧到期时间额外累加 7 天。
 
 两端自动化测试共 48 项通过（Mac 39、iOS 核心 9）。本次机器可读记录：[`dist/DeviceTests/verification-7day.json`](dist/DeviceTests/verification-7day.json)，不包含配对密钥、私钥或账号凭据。
+
+Mac 1.4.1 的仅描述文件刷新已另行实测：在 iPhone18pm 的 Store 1.1.0 点击批量刷新，Kazumi 与 Store 均成功续签至新签发时间起 168 小时，设备读回文件一致，安装位置、版本和进程编号保持不变；Store 自身无需退出。随后两款应用另行全新启动成功，Store 保留配对并恢复成功任务。记录及北京时间见 [Mac 端实测说明](../auto-sign/README.md#仅更新描述文件实测2026-10-14) 和 [`verification-profile-only-batch.json`](../auto-sign/dist/DeviceTests/verification-profile-only-batch.json)。
 
 2026-10-14 更新功能验证：Mac 57 项测试、Store 核心 17 项测试全部通过；Mac Release、iOS 真机 IPA 和模拟器均构建成功。独立 iOS 26.5 模拟器使用本机测试 API 验证更新徽标、版本变化、立即检查、一键提交两应用、Store 自身排后、进度自动恢复及成功后清除更新提示。本次未进行真实 Apple 签名及真机升级实测。
 
