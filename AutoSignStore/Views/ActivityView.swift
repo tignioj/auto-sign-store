@@ -3,29 +3,30 @@ import SwiftUI
 struct ActivityView: View {
     @ObservedObject var model: StoreModel
 
-    private var visibleJobs: [RefreshJob] {
-        var jobs = model.jobs
-        if let active = model.activeJob, active.deviceUDID == model.selectedDeviceID {
-            jobs.removeAll { $0.id == active.id }
-            jobs.insert(active, at: 0)
-        }
-        return jobs
-    }
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                if visibleJobs.isEmpty {
+                if let device = model.currentDevice {
+                    Label(device.name, systemImage: "iphone.gen3")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+                if let message = model.otherDeviceTaskMessage {
+                    StoreCard {
+                        Label(message, systemImage: "desktopcomputer")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                }
+                if model.jobs.isEmpty {
                     ContentUnavailableView("还没有任务记录", systemImage: "clock.arrow.circlepath",
-                        description: Text("安装应用或刷新签名后，这里会显示 Mac 的执行进度与结果。"))
+                        description: Text("这里仅显示当前所选设备的任务。安装应用或刷新签名后，可查看执行进度与结果。"))
                         .padding(.top, 70)
                 }
-                ForEach(visibleJobs) { job in
+                ForEach(model.jobs) { job in
                     StoreCard {
                         VStack(alignment: .leading, spacing: 17) {
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Label(job.state == .running ? (job.updateRequest != nil ? "正在更新" : (job.installRequest == nil ? "正在刷新" : "正在安装")) : job.state.title, systemImage: job.state.symbol).font(.headline).foregroundStyle(job.state.color)
+                                    Label(job.statusTitle, systemImage: job.state.symbol).font(.headline).foregroundStyle(job.state.color)
                                     Text(job.createdAt.formatted(date: .abbreviated, time: .shortened))
                                         .font(.caption).foregroundStyle(.secondary)
                                 }

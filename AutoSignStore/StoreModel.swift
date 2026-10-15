@@ -12,7 +12,7 @@ final class StoreModel: ObservableObject {
     @Published private(set) var isConnected = false
     @Published private(set) var isLoading = false
     @Published private(set) var isSubmitting = false
-    @Published private(set) var activeJob: RefreshJob?
+    @Published private var latestJob: RefreshJob?
     @Published private(set) var error: String?
     @Published private(set) var sources: [SavedAppSource] = []
     @Published private(set) var isManagingSources = false
@@ -42,7 +42,6 @@ final class StoreModel: ObservableObject {
         if let data = UserDefaults.standard.data(forKey: "cachedSnapshot.\(address)"),
            let value = try? StoreJSON.decoder().decode(StoreSnapshot.self, from: data) {
             snapshot = value
-            activeJob = value.recentJobs.first { $0.requestID == requestID }
         }
     }
 
@@ -55,9 +54,21 @@ final class StoreModel: ObservableObject {
                 return lhs.expiration < rhs.expiration
             }
     }
-    var jobs: [RefreshJob] { (snapshot?.recentJobs ?? []).filter { $0.deviceUDID == selectedDeviceID } }
+    private var jobStatus: StoreJobStatus {
+        StoreJobStatus(recentJobs: snapshot?.recentJobs ?? [], latestJob: latestJob, devices: devices,
+                       selectedDeviceID: selectedDeviceID, requestID: requestID)
+    }
+    var jobs: [RefreshJob] { jobStatus.jobs }
+    var activeJob: RefreshJob? { jobStatus.activeJob }
     var hasCredentials: Bool { client != nil }
     var isRefreshing: Bool { isSubmitting || activeJob.map { !$0.state.isTerminal } == true }
+    var isServerBusy: Bool { isSubmitting || jobStatus.isBusy }
+    var currentTaskTitle: String { isSubmitting ? "正在提交任务…" : "\(activeJob?.statusTitle ?? "正在处理")…" }
+    var serverTaskMessage: String? {
+        guard let message = jobStatus.busyMessage else { return nil }
+        return isConnected ? "\(message)，请等待任务完成。" : "上次同步：\(message)。重新连接后可确认进度。"
+    }
+    var otherDeviceTaskMessage: String? { jobStatus.otherDeviceJob == nil ? nil : serverTaskMessage }
     var refreshableApps: [StoreApp] { apps.filter { includeSelf || !$0.isStore } }
     var needsAttention: Int { apps.filter { $0.remainingDays() <= 1 }.count }
     var serverName: String { snapshot?.serverName ?? "你的 Mac" }
@@ -67,11 +78,11 @@ final class StoreModel: ObservableObject {
     var updates: [StoreAppUpdate] {
         (snapshot?.availableUpdates ?? []).filter { $0.deviceUDID == selectedDeviceID }
     }
-    var canManageSources: Bool { isConnected && supportsSources && !isLoading && !isManagingSources && !isRefreshing && !isCheckingUpdates }
+    var canManageSources: Bool { isConnected && supportsSources && !isLoading && !isManagingSources && !isServerBusy && !isCheckingUpdates }
     var canInstall: Bool { canRefresh && snapshot?.capabilities?.contains("install") == true }
-    var canRefresh: Bool { isConnected && currentDevice?.isReady == true && !isLoading && !isRefreshing && !isManagingSources && !isCheckingUpdates }
+    var canRefresh: Bool { isConnected && currentDevice?.isReady == true && !isLoading && !isServerBusy && !isManagingSources && !isCheckingUpdates }
     var canUpdate: Bool { canRefresh && supportsUpdates }
-    var canChangeConnection: Bool { !isLoading && !isSubmitting && !isManagingSources && !isCheckingUpdates && (!isRefreshing || !isConnected) }
+    var canChangeConnection: Bool { !isLoading && !isSubmitting && !isManagingSources && !isCheckingUpdates && (!isServerBusy || !isConnected) }
 
     func pair() async {
         guard canChangeConnection else { return }
@@ -91,7 +102,7 @@ final class StoreModel: ObservableObject {
             UserDefaults.standard.set(canonical, forKey: "serverAddress")
             selectedDeviceID = UserDefaults.standard.string(forKey: "deviceID.\(canonical)") ?? ""
             requestID = try? journal.load(for: canonical)
-            activeJob = nil
+            latestJob = nil
             sources = []; sourceError = nil
             pairingToken = ""
             accept(value)
@@ -137,7 +148,7 @@ final class StoreModel: ObservableObject {
         requestID = id
         let request = RefreshRequest(requestID: id, deviceUDID: selectedDeviceID, appIDs: selection.map(\.id))
         selectedTab = 1
-        do { activeJob = try await client.updateApps(request); stopPolling(); resumePolling() }
+        do { latestJob = try await client.updateApps(request); stopPolling(); resumePolling() }
         catch {
             let message = "\(connectionMessage(error)) 如果请求已送达，Mac 会继续更新；重新连接后可在活动中查看。"
             await sync()
@@ -146,7 +157,8 @@ final class StoreModel: ObservableObject {
     }
 
     func refresh(_ selection: [StoreApp]) async {
-        guard let client, canRefresh, !selection.isEmpty else { return }
+        guard let client, canRefresh, !selection.isEmpty,
+              selection.allSatisfy({ $0.deviceUDID == selectedDeviceID }) else { return }
         isSubmitting = true; error = nil
         let id = UUID().uuidString
         // This is written before the HTTP request: a self-install can close the app before the response arrives.
@@ -159,7 +171,7 @@ final class StoreModel: ObservableObject {
         requestID = id
         let request = RefreshRequest(requestID: id, deviceUDID: selectedDeviceID, appIDs: selection.map(\.id))
         do {
-            activeJob = try await client.refresh(request)
+            latestJob = try await client.refresh(request)
             stopPolling()
             resumePolling()
         } catch {
@@ -207,7 +219,7 @@ final class StoreModel: ObservableObject {
         let request = StoreInstallRequest(requestID: id, deviceUDID: selectedDeviceID,
                                           sourceURL: source.id, bundleIdentifier: app.id)
         selectedTab = 1
-        do { activeJob = try await client.install(request); stopPolling(); resumePolling() }
+        do { latestJob = try await client.install(request); stopPolling(); resumePolling() }
         catch {
             let message = "\(connectionMessage(error)) 如果请求已送达，Mac 会继续安装；重新连接后可在活动中查看。"
             await sync()
@@ -233,7 +245,7 @@ final class StoreModel: ObservableObject {
         stopPolling()
         CredentialStore.remove(for: savedAddress)
         UserDefaults.standard.removeObject(forKey: "serverAddress")
-        client = nil; snapshot = nil; activeJob = nil
+        client = nil; snapshot = nil; latestJob = nil
         isConnected = false; error = nil; pairingToken = ""
         sources = []; sourceError = nil
     }
@@ -246,11 +258,7 @@ final class StoreModel: ObservableObject {
             UserDefaults.standard.set(data, forKey: "cachedSnapshot.\(savedAddress)")
         }
         isConnected = true
-        if let job = value.recentJobs.first(where: { !$0.state.isTerminal }) {
-            activeJob = job
-        } else if let id = requestID, let job = value.recentJobs.first(where: { $0.requestID == id }) {
-            activeJob = job
-        } else { activeJob = nil }
+        latestJob = nil
     }
 
     private func resumePolling() {
@@ -262,14 +270,14 @@ final class StoreModel: ObservableObject {
             defer { if self?.pollGeneration == generation { self?.pollTask = nil } }
             while !Task.isCancelled {
                 do {
-                    let busy = self?.isRefreshing == true && self?.isConnected == true
+                    let busy = self?.isServerBusy == true && self?.isConnected == true
                     try await Task.sleep(for: .seconds(busy ? 2 : 30))
                     guard let self, !Task.isCancelled, self.savedAddress == expectedAddress,
                           self.pollGeneration == generation else { return }
-                    if let job = self.activeJob, !job.state.isTerminal {
+                    if let job = self.jobStatus.busyJob {
                         let updated = try await client.job(job.id)
                         guard !Task.isCancelled, self.pollGeneration == generation else { return }
-                        self.activeJob = updated
+                        self.latestJob = updated
                         self.isConnected = true
                         if updated.state.isTerminal { await self.sync(reportErrors: false) }
                     } else {

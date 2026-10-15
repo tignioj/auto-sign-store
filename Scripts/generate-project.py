@@ -38,9 +38,9 @@ frameworks = obj('frameworks', 'isa = PBXFrameworksBuildPhase; buildActionMask =
 project_configs, target_configs = [], []
 for name in ('Debug', 'Release'):
     project_configs.append(obj('project-' + name, f'isa = XCBuildConfiguration; name = {name}; buildSettings = {{ CLANG_ENABLE_MODULES = YES; SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_VERSION = 6.0; }};'))
-    settings = '''ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 5;
+    settings = '''ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 6;
         GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = AutoSignStore/Resources/Info.plist;
-        IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 1.2.0;
+        IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 1.2.1;
         PRODUCT_BUNDLE_IDENTIFIER = local.autosign.store; PRODUCT_NAME = "$(TARGET_NAME)";
         SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SUPPORTS_MACCATALYST = NO; TARGETED_DEVICE_FAMILY = "1,2";
         SWIFT_VERSION = 6.0; SWIFT_STRICT_CONCURRENCY = complete;

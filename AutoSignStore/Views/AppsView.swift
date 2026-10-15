@@ -14,6 +14,12 @@ struct AppsView: View {
                     connectionPill
                     summary
                     if model.devices.count > 0 { devicePicker }
+                    if let message = model.otherDeviceTaskMessage {
+                        StoreCard {
+                            Label(message, systemImage: "desktopcomputer")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                        }
+                    }
                     if model.supportsUpdates { updatesSection }
                     if let job = model.activeJob, !job.state.isTerminal {
                         Button { model.selectedTab = 1 } label: {
@@ -21,7 +27,7 @@ struct AppsView: View {
                                 HStack(spacing: 14) {
                                     ProgressView()
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text("Mac 正在处理应用").font(.headline)
+                                        Text("\(job.statusTitle) · \(model.currentDevice?.name ?? "当前设备")").font(.headline)
                                         Text("\(job.items.filter { $0.state.isTerminal }.count) / \(job.items.count) 已处理 · 查看进度")
                                             .font(.caption).foregroundStyle(.secondary)
                                     }
@@ -117,7 +123,7 @@ struct AppsView: View {
                 HStack(spacing: 9) {
                     if model.isRefreshing { ProgressView().tint(StoreTheme.accent) }
                     else { Image(systemName: "arrow.triangle.2.circlepath") }
-                    Text(model.isRefreshing ? "Mac 正在处理…" : "刷新全部应用").fontWeight(.semibold)
+                    Text(model.isRefreshing ? model.currentTaskTitle : "刷新全部应用").fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity).padding(.vertical, 15)
                 .foregroundStyle(StoreTheme.accent)
@@ -139,7 +145,7 @@ struct AppsView: View {
                 ForEach(model.devices) { device in
                     Text("\(device.name)\(device.isReady ? "" : " · 未就绪")").tag(device.id)
                 }
-            }.pickerStyle(.menu).disabled(model.isRefreshing)
+            }.pickerStyle(.menu).disabled(model.isSubmitting)
             Text("请核对设备名称。iOS 不允许应用自动读取本机 UDID。")
                 .font(.caption2).foregroundStyle(.secondary)
             if let device = model.currentDevice, !device.isReady {

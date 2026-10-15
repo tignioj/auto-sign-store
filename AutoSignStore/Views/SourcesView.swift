@@ -20,6 +20,10 @@ struct SourcesView: View {
                     Text(error).font(.caption).foregroundStyle(.orange).textSelection(.enabled)
                 }
                 if model.isManagingSources { HStack { ProgressView(); Text("正在同步应用源…") } }
+                if let message = model.otherDeviceTaskMessage {
+                    Label(message, systemImage: "desktopcomputer")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
             Section {
                 ForEach(model.sources) { source in
@@ -202,7 +206,7 @@ private struct SourceAppDetailView: View {
                     Picker("安装设备", selection: $model.selectedDeviceID) {
                         Text("请选择本机设备").tag("")
                         ForEach(model.devices) { device in Text("\(device.name)\(device.isReady ? "" : " · 未就绪")").tag(device.id) }
-                    }.disabled(model.isRefreshing)
+                    }.disabled(model.isSubmitting)
                     Button {
                         Task { await model.install(app, from: source) }
                     } label: {
@@ -210,7 +214,7 @@ private struct SourceAppDetailView: View {
                     }.disabled(!model.canInstall || app.latestVersion == nil)
                     if !model.isConnected { Text("连接 Mac 后可安装。").foregroundStyle(.orange) }
                     else if model.currentDevice?.isReady != true { Text("请核对并选择已配对、已解锁且开启开发者模式的设备。").font(.caption).foregroundStyle(.orange) }
-                    else if model.isRefreshing { Text("Mac 正在处理任务，请在“活动”中查看进度。").font(.caption).foregroundStyle(.secondary) }
+                    else if let message = model.serverTaskMessage { Text(message).font(.caption).foregroundStyle(.secondary) }
                 } footer: {
                     Text("Mac 会重新检查最新版本，自动下载、签名并安装。新应用使用 Mac 配置的签名团队；升级保留原应用标识及团队。安装 Store 自身时可能退出，重新打开可查看结果。")
                 }
