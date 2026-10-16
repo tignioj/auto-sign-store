@@ -11,7 +11,7 @@
     <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
     <key>AutoSignStoreClient</key><true/>
     <key>LSRequiresIPhoneOS</key><true/>
-    <key>NSLocalNetworkUsageDescription</key><string>发现同一 Wi-Fi 中的 AutoSign Mac，为此设备安装源中的应用，并刷新应用及 AutoSign Store 自身的签名。</string>
+    <key>NSLocalNetworkUsageDescription</key><string>Discover AutoSign on a Mac on the same Wi-Fi to install apps from sources and refresh app signatures, including AutoSign Store itself.</string>
     <key>NSBonjourServices</key><array><string>_autosign._tcp</string></array>
     <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
     <key>UILaunchScreen</key><dict/>

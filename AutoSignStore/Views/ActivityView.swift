@@ -17,8 +17,8 @@ struct ActivityView: View {
                     }
                 }
                 if model.jobs.isEmpty {
-                    ContentUnavailableView("还没有任务记录", systemImage: "clock.arrow.circlepath",
-                        description: Text("这里仅显示当前所选设备的任务。安装应用或刷新签名后，可查看执行进度与结果。"))
+                    ContentUnavailableView(L10n.tr("activity.empty.title"), systemImage: "clock.arrow.circlepath",
+                        description: Text(L10n.tr("activity.empty.detail")))
                         .padding(.top, 70)
                 }
                 ForEach(model.jobs) { job in
@@ -27,15 +27,15 @@ struct ActivityView: View {
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 6) {
                                     Label(job.statusTitle, systemImage: job.state.symbol).font(.headline).foregroundStyle(job.state.color)
-                                    Text(job.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                    Text(L10n.date(job.createdAt))
                                         .font(.caption).foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                Text("\(job.items.count) 个应用").font(.caption).foregroundStyle(.secondary)
+                                Text(L10n.tr("count.apps", job.items.count)).font(.caption).foregroundStyle(.secondary)
                             }
                             if !job.state.isTerminal {
                                 ProgressView(value: Double(job.items.filter { $0.state.isTerminal }.count), total: Double(max(1, job.items.count)))
-                                Text("Mac 独立执行任务，关闭手机应用后仍会继续。")
+                                Text(L10n.tr("activity.backgroundHint"))
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                             ForEach(job.items) { item in
@@ -46,7 +46,7 @@ struct ActivityView: View {
                                         Text(item.name).font(.subheadline.bold())
                                         Text(item.message).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                                         if let expiry = item.expiration {
-                                            Text("到期：\(expiry.formatted(date: .abbreviated, time: .shortened))")
+                                            Text(L10n.tr("activity.expiration", L10n.date(expiry)))
                                                 .font(.caption2).foregroundStyle(StoreTheme.accent)
                                         }
                                     }
@@ -60,10 +60,10 @@ struct ActivityView: View {
             .padding(22).frame(maxWidth: 680).frame(maxWidth: .infinity)
         }
         .background(StoreTheme.canvas)
-        .navigationTitle("活动")
+        .navigationTitle(L10n.tr("tab.activity"))
         .toolbar {
             Button { Task { await model.sync() } } label: { Image(systemName: "arrow.clockwise") }
-                .disabled(model.isLoading).accessibilityLabel("同步任务")
+                .disabled(model.isLoading).accessibilityLabel(L10n.tr("activity.sync"))
         }
         .refreshable { await model.sync() }
     }

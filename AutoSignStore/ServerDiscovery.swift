@@ -9,7 +9,8 @@ struct DiscoveredServer: Identifiable {
 @MainActor
 final class ServerDiscovery: NSObject, ObservableObject, @preconcurrency NetServiceBrowserDelegate, @preconcurrency NetServiceDelegate {
     @Published private(set) var servers: [DiscoveredServer] = []
-    @Published private(set) var message = "搜索同一 Wi-Fi 中的 Mac"
+    @Published private var messageKey = "discovery.searching"
+    var message: String { servers.isEmpty ? L10n.tr(messageKey) : L10n.tr("count.macs", servers.count) }
     private let browser = NetServiceBrowser()
     private var services: [NetService] = []
     private var started = false
@@ -17,6 +18,7 @@ final class ServerDiscovery: NSObject, ObservableObject, @preconcurrency NetServ
     func start() {
         guard !started else { return }
         started = true
+        messageKey = "discovery.searching"
         browser.delegate = self
         browser.searchForServices(ofType: "_autosign._tcp.", inDomain: "local.")
     }
@@ -50,15 +52,14 @@ final class ServerDiscovery: NSObject, ObservableObject, @preconcurrency NetServ
         servers.removeAll { $0.id == sender.name }
         servers.append(DiscoveredServer(id: sender.name, name: sender.name, address: address))
         servers.sort { $0.name < $1.name }
-        message = "发现 \(servers.count) 台 Mac"
     }
 
     func netServiceBrowser(_ browser: NetServiceBrowser, didNotSearch errorDict: [String: NSNumber]) {
-        message = "无法发现 Mac。请在系统设置中允许本地网络访问，或手动输入地址。"
+        messageKey = "discovery.failed"
         started = false
     }
 
     func netService(_ sender: NetService, didNotResolve errorDict: [String: NSNumber]) {
-        message = "发现了服务，但解析地址失败；可以手动输入 Mac 的 IP 地址。"
+        messageKey = "discovery.resolveFailed"
     }
 }

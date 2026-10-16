@@ -4,16 +4,25 @@ struct ConnectionView: View {
     @ObservedObject var model: StoreModel
     @StateObject private var discovery = ServerDiscovery()
     @State private var showToken = false
+    @AppStorage(AppLanguage.preferenceKey) private var language = AppLanguage.system.rawValue
 
     var body: some View {
         Form {
+            Section {
+                Picker(L10n.tr("language.title"), selection: $language) {
+                    ForEach(AppLanguage.allCases) { option in
+                        Text(option.title).tag(option.rawValue)
+                    }
+                }
+                .accessibilityIdentifier("languagePicker")
+            } footer: { Text(L10n.tr("language.hint")) }
             Section {
                 HStack(spacing: 14) {
                     Image(systemName: model.isConnected ? "wifi.circle.fill" : "wifi.slash")
                         .font(.system(size: 38)).foregroundStyle(StoreTheme.accent)
                     VStack(alignment: .leading, spacing: 5) {
-                        Text(model.isConnected ? model.serverName : "连接你的 Mac").font(.headline)
-                        Text(model.isConnected ? "局域网服务已连接" : "同一 Wi-Fi，安装与续签")
+                        Text(model.isConnected ? model.serverName : L10n.tr("connection.title")).font(.headline)
+                        Text(model.isConnected ? L10n.tr("connection.connected") : L10n.tr("connection.subtitle"))
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                 }.padding(.vertical, 10)
@@ -37,54 +46,54 @@ struct ConnectionView: View {
                         }
                     }.disabled(!model.canChangeConnection)
                 }
-                Button("重新搜索") { discovery.stop(); discovery.start() }
-            } header: { Text("附近的 AutoSign") }
-              footer: { Text("在 Mac 的 AutoSign 中开启“手机安装与续签”服务。首次使用时请允许本地网络访问。") }
+                Button(L10n.tr("connection.searchAgain")) { discovery.stop(); discovery.start() }
+            } header: { Text(L10n.tr("connection.nearby")) }
+              footer: { Text(L10n.tr("connection.discoveryHint")) }
             Section {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Mac 地址").font(.caption).foregroundStyle(.secondary)
+                    Text(L10n.tr("connection.address")).font(.caption).foregroundStyle(.secondary)
                     TextField("http://192.168.1.10:8091", text: $model.address)
                         .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
-                        .accessibilityLabel("Mac 局域网地址")
+                        .accessibilityLabel(L10n.tr("connection.addressAccessibility"))
                 }.padding(.vertical, 4)
                 HStack {
                     Group {
-                        if showToken { TextField("粘贴 Mac 上的配对密钥", text: $model.pairingToken) }
-                        else { SecureField("粘贴 Mac 上的配对密钥", text: $model.pairingToken) }
+                        if showToken { TextField(L10n.tr("connection.tokenPlaceholder"), text: $model.pairingToken) }
+                        else { SecureField(L10n.tr("connection.tokenPlaceholder"), text: $model.pairingToken) }
                     }
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    .accessibilityLabel("配对密钥")
+                    .accessibilityLabel(L10n.tr("connection.token"))
                     Button { showToken.toggle() } label: { Image(systemName: showToken ? "eye.slash" : "eye") }
-                        .accessibilityLabel(showToken ? "隐藏密钥" : "显示密钥")
+                        .accessibilityLabel(showToken ? L10n.tr("connection.hideToken") : L10n.tr("connection.showToken"))
                 }
                 Button { Task { await model.pair() } } label: {
                     HStack {
-                        Text(model.isLoading ? "正在连接…" : "配对并连接")
+                        Text(model.isLoading ? L10n.tr("connection.connecting") : L10n.tr("connection.pair"))
                         Spacer()
                         if model.isLoading { ProgressView() } else { Image(systemName: "arrow.right") }
                     }
                 }.disabled(!model.canChangeConnection || model.address.isEmpty || model.pairingToken.isEmpty)
-            } header: { Text("配对 Mac") }
-              footer: { Text("配对密钥保存在本机钥匙串。此服务使用局域网 HTTP，请仅连接你信任的网络。") }
+            } header: { Text(L10n.tr("connection.pairSection")) }
+              footer: { Text(L10n.tr("connection.securityHint")) }
             if model.hasCredentials {
                 Section {
-                    Button("同步连接状态") { Task { await model.sync() } }.disabled(model.isLoading)
-                    Button("解除此 Mac 的配对", role: .destructive) { model.disconnect() }.disabled(!model.canChangeConnection)
+                    Button(L10n.tr("connection.syncStatus")) { Task { await model.sync() } }.disabled(model.isLoading)
+                    Button(L10n.tr("connection.unpair"), role: .destructive) { model.disconnect() }.disabled(!model.canChangeConnection)
                 }
             }
-            Section("首次使用") {
-                guide("cable.connector", "先通过 USB 配对", "解锁设备，信任 Mac，并在 Finder 启用“连接到 Wi-Fi 时显示此设备”。")
-                guide("hammer", "开启开发者模式", "前往设置 → 隐私与安全性 → 开发者模式，按系统提示重启。")
-                guide("checkmark.shield", "首次安装信任证书", "必要时在设置 → 通用 → VPN 与设备管理中信任开发者。")
-                guide("arrow.clockwise", "Store 自身也能刷新", "先用新版 AutoSign 安装 Store IPA。需覆盖安装时应用可能退出，Mac 会继续完成任务。")
+            Section(L10n.tr("connection.firstUse")) {
+                guide("cable.connector", L10n.tr("connection.usb.title"), L10n.tr("connection.usb.detail"))
+                guide("hammer", L10n.tr("connection.developer.title"), L10n.tr("connection.developer.detail"))
+                guide("checkmark.shield", L10n.tr("connection.trust.title"), L10n.tr("connection.trust.detail"))
+                guide("arrow.clockwise", L10n.tr("connection.self.title"), L10n.tr("connection.self.detail"))
             }
             Section {
                 Text("AutoSign Store 1.2 · iOS 17+").font(.caption).foregroundStyle(.secondary)
-                Text("续签会向 Apple 请求新描述文件。免费账号刷新成功后获得新 7 天签名；未签发新文件时会显示失败。Mac 上的 Xcode 账号需要保持有效。")
+                Text(L10n.tr("connection.appleHint"))
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("连接")
+        .navigationTitle(L10n.tr("tab.connection"))
         .task { discovery.start() }
         .onDisappear { discovery.stop() }
     }

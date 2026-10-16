@@ -5,9 +5,9 @@ public enum StoreClientError: LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidAddress: "请输入局域网地址，例如 http://192.168.1.10:8091。"
-        case .unauthorized: "配对密钥无效。请从 Mac 的 AutoSign 重新复制。"
-        case .incompatibleServer: "Mac 服务版本不兼容，请更新 AutoSign。"
+        case .invalidAddress: L10n.tr("error.invalidAddress")
+        case .unauthorized: L10n.tr("error.unauthorized")
+        case .incompatibleServer: L10n.tr("error.incompatibleServer")
         case .response(let message): message
         }
     }
@@ -99,7 +99,7 @@ public struct StoreClient: Sendable {
     }
 
     public func job(_ id: String) async throws -> RefreshJob {
-        guard UUID(uuidString: id) != nil else { throw StoreClientError.response("无效的任务编号。") }
+        guard UUID(uuidString: id) != nil else { throw StoreClientError.response(L10n.tr("error.invalidJob")) }
         return try await send(path: "v1/jobs/\(id)")
     }
 
@@ -109,12 +109,13 @@ public struct StoreClient: Sendable {
         request.httpBody = body
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(L10n.language.resolved().rawValue, forHTTPHeaderField: "Accept-Language")
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw StoreClientError.response("Mac 返回了无效响应。") }
+        guard let http = response as? HTTPURLResponse else { throw StoreClientError.response(L10n.tr("error.invalidResponse")) }
         if http.statusCode == 401 { throw StoreClientError.unauthorized }
         guard (200..<300).contains(http.statusCode) else {
             let detail = (try? StoreJSON.decoder().decode(StoreAPIError.self, from: data))?.message
-            throw StoreClientError.response(detail ?? "Mac 服务错误（\(http.statusCode)）。")
+            throw StoreClientError.response(detail ?? L10n.tr("error.server", http.statusCode))
         }
         return try StoreJSON.decoder().decode(T.self, from: data)
     }

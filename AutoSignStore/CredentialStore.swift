@@ -36,6 +36,6 @@ enum CredentialStore {
 
     private static func keychainError(_ status: OSStatus) -> NSError {
         NSError(domain: NSOSStatusErrorDomain, code: Int(status), userInfo: [NSLocalizedDescriptionKey:
-            "无法保存配对密钥：\(SecCopyErrorMessageString(status, nil) as String? ?? String(status))"])
+            L10n.tr("error.keychain", SecCopyErrorMessageString(status, nil) as String? ?? String(status))])
     }
 }

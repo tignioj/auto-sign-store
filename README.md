@@ -2,6 +2,16 @@
 
 原生 SwiftUI iPhone / iPad 客户端，通过同一局域网中的 [AutoSign](https://github.com/tignioj/auto-sign) Mac 安装、更新及续签应用，包括 AutoSign Store 自身。支持在手机管理应用源、浏览应用，并让 Mac 自动下载、签名及安装。
 
+## 语言 / Languages
+
+支持 **简体中文和 English**，默认跟随系统语言。可在 **连接 → 语言** 中选择“跟随系统”、English 或简体中文，立即生效并保存在本机。未支持的系统语言回退到英文。日期、文件大小和应用数量随所选语言格式化。
+
+Supports **English and Simplified Chinese**, following the system language by default. Choose **Connection → Language** to switch immediately; your preference is saved on this device. Unsupported system languages fall back to English. Dates, file sizes, and app counts use the selected locale.
+
+界面、客户端错误及本地网络权限说明均已本地化。Mac 返回的任务日志、错误详情以及第三方源提供的应用名称、介绍和更新说明保留原文；客户端发送 `Accept-Language`，供支持该请求头的服务端返回对应语言。
+
+翻译资源位于 `AutoSignStore/Core/Resources/{en,zh-Hans}.lproj/`，数量文案使用 `Localizable.stringsdict`；系统权限说明位于 `AutoSignStore/Resources/{en,zh-Hans}.lproj/InfoPlist.strings`。新增文案请同时补全两种语言，通过 `L10n.tr` 调用，再运行 `swift test` 检查资源覆盖与格式参数。重新生成 Xcode 工程会自动保留本地化资源。
+
 ## 使用要求
 
 - iPhone / iPad：iOS / iPadOS 17 或更高版本。

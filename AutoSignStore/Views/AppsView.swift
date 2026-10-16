@@ -27,8 +27,8 @@ struct AppsView: View {
                                 HStack(spacing: 14) {
                                     ProgressView()
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text("\(job.statusTitle) · \(model.currentDevice?.name ?? "当前设备")").font(.headline)
-                                        Text("\(job.items.filter { $0.state.isTerminal }.count) / \(job.items.count) 已处理 · 查看进度")
+                                        Text("\(job.statusTitle) · \(model.currentDevice?.name ?? L10n.tr("device.current"))").font(.headline)
+                                        Text(L10n.tr("apps.progress", job.items.filter { $0.state.isTerminal }.count, job.items.count))
                                             .font(.caption).foregroundStyle(.secondary)
                                     }
                                     Spacer()
@@ -58,7 +58,7 @@ struct AppsView: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 7) {
                 Text("AUTOSIGN STORE").font(.caption.weight(.bold)).tracking(2.5).foregroundStyle(StoreTheme.accent)
-                Text("让好用的应用，\n一直都在。").font(.system(size: 32, weight: .bold, design: .rounded)).tracking(-0.8)
+                Text(L10n.tr("apps.tagline")).font(.system(size: 32, weight: .bold, design: .rounded)).tracking(-0.8)
             }
             Spacer(minLength: 8)
             AppGlyph(size: 46).padding(.top, 4)
@@ -70,19 +70,19 @@ struct AppsView: View {
             StoreCard {
                 VStack(alignment: .leading, spacing: 18) {
                     Image(systemName: "iphone.and.arrow.forward").font(.system(size: 42)).foregroundStyle(StoreTheme.accent)
-                    Text("手机选应用，Mac 帮你安装。").font(.title2.bold())
-                    Text("连接同一 Wi-Fi 中的 AutoSign，添加应用源、选择应用，让 Mac 自动下载、签名并安装。安装后的应用和 Store 自身也可以随时续签。")
+                    Text(L10n.tr("apps.welcome.title")).font(.title2.bold())
+                    Text(L10n.tr("apps.welcome.detail"))
                         .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     Button { model.selectedTab = 2 } label: {
-                        Label("连接我的 Mac", systemImage: "wifi").font(.headline)
+                        Label(L10n.tr("apps.connect"), systemImage: "wifi").font(.headline)
                             .frame(maxWidth: .infinity).padding(.vertical, 9)
                     }.buttonStyle(.borderedProminent).clipShape(RoundedRectangle(cornerRadius: 14))
                 }
             }
             VStack(alignment: .leading, spacing: 18) {
-                step("1", "在 Mac 开启服务", "打开 AutoSign 的“手机安装与续签”局域网服务。")
-                step("2", "配对当前设备", "输入 Mac 显示的密钥，并核对这台 iPhone 或 iPad。")
-                step("3", "选择应用，自动安装", "在“应用源”选择应用，安装成功后可在这里续签。")
+                step("1", L10n.tr("apps.step.service.title"), L10n.tr("apps.step.service.detail"))
+                step("2", L10n.tr("apps.step.pair.title"), L10n.tr("apps.step.pair.detail"))
+                step("3", L10n.tr("apps.step.install.title"), L10n.tr("apps.step.install.detail"))
             }.padding(.horizontal, 4)
         }
     }
@@ -90,13 +90,13 @@ struct AppsView: View {
     private var connectionPill: some View {
         HStack(spacing: 8) {
             Circle().fill(model.isConnected ? StoreTheme.accent : .orange).frame(width: 7, height: 7)
-            Text(model.isConnected ? "已连接 \(model.serverName)" : "Mac 暂时离线")
+            Text(model.isConnected ? L10n.tr("connection.named", model.serverName) : L10n.tr("connection.offline"))
                 .font(.caption.weight(.medium)).lineLimit(1)
             Spacer()
             Button { Task { await model.sync() } } label: {
                 if model.isLoading { ProgressView().controlSize(.small) }
                 else { Image(systemName: "arrow.clockwise").font(.callout.weight(.semibold)) }
-            }.disabled(model.isLoading).accessibilityLabel("同步 Mac 状态")
+            }.disabled(model.isLoading).accessibilityLabel(L10n.tr("connection.sync"))
         }
         .padding(.horizontal, 15).padding(.vertical, 12)
         .background(StoreTheme.accent.opacity(0.08), in: Capsule())
@@ -106,16 +106,16 @@ struct AppsView: View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("签名概览").font(.subheadline.weight(.medium)).foregroundStyle(.white.opacity(0.75))
+                    Text(L10n.tr("apps.summary")).font(.subheadline.weight(.medium)).foregroundStyle(.white.opacity(0.75))
                     HStack(alignment: .firstTextBaseline, spacing: 7) {
                         Text("\(model.apps.count)").font(.system(size: 48, weight: .semibold, design: .rounded))
-                        Text("个应用").font(.subheadline).foregroundStyle(.white.opacity(0.75))
+                        Text(L10n.tr(model.apps.count == 1 ? "apps.noun.one" : "apps.noun.other")).font(.subheadline).foregroundStyle(.white.opacity(0.75))
                     }
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 8) {
                     Image(systemName: "checkmark.shield").font(.system(size: 28, weight: .light))
-                    Text(model.needsAttention == 0 ? "\(model.apps.isEmpty ? "等待添加应用" : "签名状态良好")" : "\(model.needsAttention) 个即将到期")
+                    Text(model.needsAttention == 0 ? model.apps.isEmpty ? L10n.tr("apps.waiting") : L10n.tr("apps.healthy") : L10n.tr("count.expiring", model.needsAttention))
                         .font(.caption.weight(.medium))
                 }.padding(.top, 4)
             }
@@ -123,14 +123,14 @@ struct AppsView: View {
                 HStack(spacing: 9) {
                     if model.isRefreshing { ProgressView().tint(StoreTheme.accent) }
                     else { Image(systemName: "arrow.triangle.2.circlepath") }
-                    Text(model.isRefreshing ? model.currentTaskTitle : "刷新全部应用").fontWeight(.semibold)
+                    Text(model.isRefreshing ? model.currentTaskTitle : L10n.tr("apps.refreshAll")).fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity).padding(.vertical, 15)
                 .foregroundStyle(StoreTheme.accent)
                 .background(.white.opacity(model.canRefresh && !model.refreshableApps.isEmpty ? 1 : 0.65), in: RoundedRectangle(cornerRadius: 15))
             }
             .buttonStyle(.plain).disabled(!model.canRefresh || model.refreshableApps.isEmpty)
-            Text(model.includeSelf ? "包含 Store 自身 · 自身最后刷新" : "本次批量刷新不包含 Store 自身")
+            Text(model.includeSelf ? L10n.tr("apps.includeSelf.detail") : L10n.tr("apps.excludeSelf.detail"))
                 .font(.caption).foregroundStyle(.white.opacity(0.75)).frame(maxWidth: .infinity)
         }
         .padding(24).foregroundStyle(.white)
@@ -140,16 +140,16 @@ struct AppsView: View {
 
     private var devicePicker: some View {
         VStack(alignment: .leading, spacing: 7) {
-            Picker("本机设备", selection: $model.selectedDeviceID) {
-                Text("请选择本机设备").tag("")
+            Picker(L10n.tr("apps.device"), selection: $model.selectedDeviceID) {
+                Text(L10n.tr("apps.selectDevice")).tag("")
                 ForEach(model.devices) { device in
-                    Text("\(device.name)\(device.isReady ? "" : " · 未就绪")").tag(device.id)
+                    Text(device.isReady ? device.name : L10n.tr("device.notReady", device.name)).tag(device.id)
                 }
             }.pickerStyle(.menu).disabled(model.isSubmitting)
-            Text("请核对设备名称。iOS 不允许应用自动读取本机 UDID。")
+            Text(L10n.tr("apps.deviceHint"))
                 .font(.caption2).foregroundStyle(.secondary)
             if let device = model.currentDevice, !device.isReady {
-                Text("设备未就绪：解锁设备，确认首次 USB 配对、Wi-Fi 连接和开发者模式。")
+                Text(L10n.tr("apps.deviceNotReady"))
                     .font(.caption).foregroundStyle(.orange)
             }
         }.padding(.horizontal, 3)
@@ -159,16 +159,16 @@ struct AppsView: View {
         StoreCard {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
-                    Label(model.updates.isEmpty ? "应用更新" : "\(model.updates.count) 个应用可更新", systemImage: "arrow.down.circle.fill")
+                    Label(model.updates.isEmpty ? L10n.tr("updates.title") : L10n.tr("count.updates", model.updates.count), systemImage: "arrow.down.circle.fill")
                         .font(.headline).foregroundStyle(StoreTheme.accent)
                     Spacer()
                     Button { Task { await model.checkUpdates() } } label: {
                         if model.isCheckingUpdates { ProgressView().controlSize(.small) }
-                        else { Text("检查更新").font(.caption.bold()) }
+                        else { Text(L10n.tr("updates.check")).font(.caption.bold()) }
                     }.disabled(!model.canManageSources || model.isLoading)
                 }
                 if model.updates.isEmpty {
-                    Text(model.selectedDeviceID.isEmpty ? "请选择本机设备查看更新。" : (model.snapshot?.sourceCheck?.checkedAt == nil ? "Mac 将自动检查已订阅的源，也可以立即检查。" : "暂无可用更新"))
+                    Text(model.selectedDeviceID.isEmpty ? L10n.tr("updates.selectDevice") : (model.snapshot?.sourceCheck?.checkedAt == nil ? L10n.tr("updates.automaticHint") : L10n.tr("updates.none")))
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 ForEach(model.updates) { update in
@@ -179,7 +179,7 @@ struct AppsView: View {
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer()
-                        Button("更新") { Task { await model.updateApps([update]) } }
+                        Button(L10n.tr("updates.update")) { Task { await model.updateApps([update]) } }
                             .buttonStyle(.bordered).disabled(!model.canUpdate)
                     }
                 }
@@ -187,26 +187,26 @@ struct AppsView: View {
                     Button {
                         Task { await model.updateApps(Array(model.updates.prefix(50))) }
                     } label: {
-                        Label(model.updates.count > 50 ? "更新前 50 个应用" : "一键更新全部", systemImage: "arrow.down.to.line")
+                        Label(model.updates.count > 50 ? L10n.tr("updates.first50") : L10n.tr("updates.all"), systemImage: "arrow.down.to.line")
                             .frame(maxWidth: .infinity).padding(.vertical, 6)
                     }.buttonStyle(.borderedProminent).disabled(!model.canUpdate)
-                    Text("保留原应用标识和签名团队 · Store 自身最后更新")
+                    Text(L10n.tr("updates.identityHint"))
                         .font(.caption2).foregroundStyle(.secondary)
                 }
                 if let check = model.snapshot?.sourceCheck {
                     if let date = check.checkedAt {
-                        Text("上次检查 \(date.formatted(date: .abbreviated, time: .shortened))")
+                        Text(L10n.tr("updates.lastCheck", L10n.date(date)))
                             .font(.caption2).foregroundStyle(.secondary)
                     }
                     if !check.errors.isEmpty {
-                        Text("\(check.errors.count) 个源检查失败，保留上次结果。请稍后重试。")
+                        Text(L10n.tr("count.failedSources", check.errors.count))
                             .font(.caption).foregroundStyle(.orange)
                     }
-                    Text(check.automatic ? "Mac 运行时每 30 分钟检查；打开 Store 自动同步提示。" : "Mac 已关闭自动检查，可点击“检查更新”。")
+                    Text(check.automatic ? L10n.tr("updates.schedule") : L10n.tr("updates.disabled"))
                         .font(.caption2).foregroundStyle(.secondary)
                 }
                 if !model.isConnected {
-                    Text("Mac 离线，显示上次同步的更新；重新连接后可更新。")
+                    Text(L10n.tr("updates.offline"))
                         .font(.caption).foregroundStyle(.orange)
                 }
             }
@@ -216,16 +216,16 @@ struct AppsView: View {
     private var appsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("我的应用").font(.title3.bold())
+                Text(L10n.tr("tab.apps")).font(.title3.bold())
                 Spacer()
-                Text("\(model.apps.count) 个").font(.caption).foregroundStyle(.secondary)
+                Text(L10n.tr("count.apps", model.apps.count)).font(.caption).foregroundStyle(.secondary)
             }
             if model.apps.isEmpty {
                 StoreCard {
                     VStack(alignment: .leading, spacing: 12) {
                         Image(systemName: "tray").font(.title).foregroundStyle(.secondary)
-                        Text(model.selectedDeviceID.isEmpty ? "先选择这台设备" : "还没有受管理的应用").font(.headline)
-                        Text("在“应用源”添加源并选择应用，让 Mac 自动下载、签名和安装。安装成功后会显示在这里，也可以在 Mac 安装本地 IPA。")
+                        Text(model.selectedDeviceID.isEmpty ? L10n.tr("apps.empty.selectDevice") : L10n.tr("apps.empty.title")).font(.headline)
+                        Text(L10n.tr("apps.empty.detail"))
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
@@ -235,12 +235,12 @@ struct AppsView: View {
                 }
             }
             if model.apps.contains(where: \.isStore) {
-                Toggle("批量刷新包含 Store 自身", isOn: $model.includeSelf)
+                Toggle(L10n.tr("apps.includeSelf"), isOn: $model.includeSelf)
                     .font(.subheadline).padding(.horizontal, 4).disabled(model.isRefreshing)
-                Text(model.supportsProfileRefresh ? "优先更新签名，无需重装；需覆盖安装时 Store 可能关闭，重开可查看结果。" : "刷新自身时应用可能关闭。Mac 会继续安装，重新打开后可查看结果。")
+                Text(model.supportsProfileRefresh ? L10n.tr("apps.profileRefreshHint") : L10n.tr("apps.selfRefreshHint"))
                     .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
             }
-            Text("到期时间来自 Mac 最近成功验证的签名；离线时显示上次同步记录。")
+            Text(L10n.tr("apps.expiryHint"))
                 .font(.caption2).foregroundStyle(.secondary).padding(.top, 4)
         }
     }
@@ -251,19 +251,19 @@ struct AppsView: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 6) {
                     Text(app.name).font(.headline).lineLimit(1)
-                    if app.isStore { Text("自身").font(.system(size: 9, weight: .bold)).padding(.horizontal, 5).padding(.vertical, 3)
+                    if app.isStore { Text(L10n.tr("apps.self")).font(.system(size: 9, weight: .bold)).padding(.horizontal, 5).padding(.vertical, 3)
                         .background(StoreTheme.accent.opacity(0.1), in: Capsule()).foregroundStyle(StoreTheme.accent) }
                 }
-                Text("v\(app.version) · \(app.expiration.formatted(date: .abbreviated, time: .omitted)) 到期")
+                Text(L10n.tr("apps.versionExpiry", app.version, L10n.date(app.expiration, includeTime: false)))
                     .font(.caption).foregroundStyle(.secondary)
                 if let update = model.updates.first(where: { $0.id == app.id }) {
-                    Text("新版本 v\(update.displayVersion)").font(.caption.bold()).foregroundStyle(StoreTheme.accent)
+                    Text(L10n.tr("apps.newVersion", update.displayVersion)).font(.caption.bold()).foregroundStyle(StoreTheme.accent)
                 }
             }
             Spacer(minLength: 0)
             VStack(spacing: 3) {
-                Text(app.expiration <= Date() ? "已到期" : "\(app.remainingDays()) 天").font(.subheadline.bold())
-                Text("剩余").font(.caption2)
+                Text(app.expiration <= Date() ? L10n.tr("apps.expired") : L10n.tr("count.days", app.remainingDays())).font(.subheadline.bold())
+                Text(L10n.tr("apps.remaining")).font(.caption2)
             }.foregroundStyle(app.remainingDays() <= 1 ? .orange : StoreTheme.accent)
         }
         .padding(16).background(StoreTheme.card, in: RoundedRectangle(cornerRadius: 20))
@@ -295,19 +295,19 @@ private struct AppDetailView: View {
                         AppGlyph(isStore: app.isStore, size: 62)
                         VStack(alignment: .leading, spacing: 5) {
                             Text(app.name).font(.title3.bold())
-                            Text("版本 \(app.version)").foregroundStyle(.secondary)
+                            Text(L10n.tr("apps.version", app.version)).foregroundStyle(.secondary)
                         }
                     }.padding(.vertical, 8)
-                    LabeledContent("应用标识", value: app.bundleIdentifier).font(.caption).textSelection(.enabled)
-                    LabeledContent("签名到期", value: app.expiration.formatted(date: .abbreviated, time: .shortened))
-                    LabeledContent("最近签名", value: app.refreshedAt.formatted(date: .abbreviated, time: .shortened))
+                    LabeledContent(L10n.tr("apps.bundleID"), value: app.bundleIdentifier).font(.caption).textSelection(.enabled)
+                    LabeledContent(L10n.tr("apps.expiration"), value: L10n.date(app.expiration))
+                    LabeledContent(L10n.tr("apps.lastRefresh"), value: L10n.date(app.refreshedAt))
                 }
                 Section {
                     if let update = model.updates.first(where: { $0.id == app.id }) {
                         Button {
                             dismiss()
                             Task { await model.updateApps([update]) }
-                        } label: { Label("更新至 v\(update.displayVersion)", systemImage: "arrow.down.circle") }
+                        } label: { Label(L10n.tr("updates.toVersion", update.displayVersion), systemImage: "arrow.down.circle") }
                             .disabled(!model.canUpdate)
                         if let notes = update.localizedDescription, !notes.isEmpty {
                             Text(notes).font(.subheadline).foregroundStyle(.secondary)
@@ -316,14 +316,14 @@ private struct AppDetailView: View {
                     Button {
                         dismiss()
                         Task { await model.refresh([app]) }
-                    } label: { Label(app.isStore ? "刷新 AutoSign Store 自身" : "刷新签名", systemImage: "arrow.clockwise") }
+                    } label: { Label(app.isStore ? L10n.tr("apps.refreshSelf") : L10n.tr("apps.refreshSignature"), systemImage: "arrow.clockwise") }
                     .disabled(!model.canRefresh)
                 } footer: {
-                    Text(model.supportsProfileRefresh ? "Mac 优先更新签名，无需重装，并验证应用启动。不兼容时沿用原标识和团队覆盖安装，重开可恢复结果。" : (app.isStore ? "Mac 会重新签名并覆盖安装 Store。应用可能关闭，重新打开后会恢复任务结果。" : "使用 Mac 保存的原始 IPA 覆盖安装，保持应用标识和签名团队一致。"))
+                    Text(model.supportsProfileRefresh ? L10n.tr("apps.detail.profileHint") : (app.isStore ? L10n.tr("apps.detail.selfHint") : L10n.tr("apps.detail.refreshHint")))
                 }
             }
-            .navigationTitle("应用详情").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
+            .navigationTitle(L10n.tr("common.appDetails")).navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L10n.tr("common.done")) { dismiss() } } }
         }
     }
 }

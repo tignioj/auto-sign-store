@@ -6,9 +6,10 @@ struct StoreJobStatus {
     let devices: [StoreDevice]
     let selectedDeviceID: String
     let requestID: String?
+    let locale: Locale
 
     init(recentJobs: [RefreshJob], latestJob: RefreshJob?, devices: [StoreDevice],
-         selectedDeviceID: String, requestID: String?) {
+         selectedDeviceID: String, requestID: String?, locale: Locale = L10n.locale) {
         // A polled result takes precedence over an older status snapshot, including completion.
         if let latestJob {
             allJobs = [latestJob] + recentJobs.filter { $0.id != latestJob.id }
@@ -18,6 +19,7 @@ struct StoreJobStatus {
         self.devices = devices
         self.selectedDeviceID = selectedDeviceID
         self.requestID = requestID
+        self.locale = locale
     }
 
     var jobs: [RefreshJob] { allJobs.filter { $0.deviceUDID == selectedDeviceID } }
@@ -34,24 +36,27 @@ struct StoreJobStatus {
         guard let job = busyJob else { return nil }
         let name = devices.first { $0.id == job.deviceUDID }?.name
         let deviceName = name.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
-            ?? "设备 \(job.deviceUDID)"
-        let queued = job.state == .queued ? "（等待执行）" : ""
-        return "Mac 正在为「\(deviceName)」\(job.operationTitle)应用\(queued)"
+            ?? L10n.string("device.fallback", locale: locale, arguments: [job.deviceUDID])
+        let queued = job.state == .queued ? L10n.string("task.queuedSuffix", locale: locale) : ""
+        return L10n.string("task.busy.\(job.operationKey)", locale: locale, arguments: [deviceName]) + queued
     }
 }
 
 extension RefreshJob {
-    var operationTitle: String {
-        if updateRequest != nil { return "更新" }
-        return installRequest == nil ? "刷新" : "安装"
+    fileprivate var operationKey: String {
+        if updateRequest != nil { return "update" }
+        return installRequest == nil ? "refresh" : "install"
     }
 
-    var statusTitle: String {
+    var operationTitle: String { L10n.tr("task.operation.\(operationKey)") }
+    var statusTitle: String { statusTitle(locale: L10n.locale) }
+
+    func statusTitle(locale: Locale) -> String {
         switch state {
-        case .queued: "等待\(operationTitle)"
-        case .running: "正在\(operationTitle)"
-        case .completed: "已完成"
-        case .failed: "需要处理"
+        case .queued: L10n.string("task.queued.\(operationKey)", locale: locale)
+        case .running: L10n.string("task.running.\(operationKey)", locale: locale)
+        case .completed: L10n.string("state.completed", locale: locale)
+        case .failed: L10n.string("state.failed", locale: locale)
         }
     }
 }

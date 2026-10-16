@@ -32,10 +32,10 @@ struct StoreCard<Content: View>: View {
 extension RefreshState {
     var title: String {
         switch self {
-        case .queued: "等待中"
-        case .running: "正在刷新"
-        case .completed: "已完成"
-        case .failed: "需要处理"
+        case .queued: L10n.tr("state.queued")
+        case .running: L10n.tr("state.running")
+        case .completed: L10n.tr("state.completed")
+        case .failed: L10n.tr("state.failed")
         }
     }
     var symbol: String {

@@ -16,7 +16,7 @@ private func task(_ id: String, device: String, state: RefreshState = .running) 
 private func status(_ jobs: [RefreshJob], device: String = "phone", latest: RefreshJob? = nil,
                     requestID: String? = nil, devices: [StoreDevice] = taskDevices) -> StoreJobStatus {
     StoreJobStatus(recentJobs: jobs, latestJob: latest, devices: devices,
-                   selectedDeviceID: device, requestID: requestID)
+                   selectedDeviceID: device, requestID: requestID, locale: Locale(identifier: "zh-Hans"))
 }
 
 @Test func otherDeviceRefreshKeepsCurrentDeviceIdleButMacBusy() throws {
@@ -95,7 +95,7 @@ func polledCompletionClearsOtherDeviceBusyStateEvenBeforeSnapshotSync(state: Ref
         #expect(value.otherDeviceJob?.id == job.id)
         #expect(try #require(value.busyMessage).contains("家里的 iPad"))
         #expect(try #require(value.busyMessage).contains("\(operation)应用（等待执行）"))
-        #expect(job.statusTitle == "等待\(operation)")
+        #expect(job.statusTitle(locale: Locale(identifier: "zh-Hans")) == "等待\(operation)")
     }
 }
 

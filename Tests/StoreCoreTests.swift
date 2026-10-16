@@ -68,7 +68,7 @@ struct ClientContractTests {
     @Test func propagatesAuthenticationAndServerErrors() async throws {
         MockProtocol.handler = { _ in (401, Data(#"{"message":"secret"}"#.utf8)) }
         do { _ = try await client().snapshot(); Issue.record("Expected authentication failure") }
-        catch { #expect(error.localizedDescription.contains("配对密钥无效")) }
+        catch { #expect(error.localizedDescription == L10n.tr("error.unauthorized")) }
         MockProtocol.handler = { _ in (409, Data(#"{"message":"Mac 正在刷新应用"}"#.utf8)) }
         do { _ = try await client().snapshot(); Issue.record("Expected busy error") }
         catch { #expect(error.localizedDescription == "Mac 正在刷新应用") }

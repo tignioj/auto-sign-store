@@ -63,15 +63,15 @@ final class StoreModel: ObservableObject {
     var hasCredentials: Bool { client != nil }
     var isRefreshing: Bool { isSubmitting || activeJob.map { !$0.state.isTerminal } == true }
     var isServerBusy: Bool { isSubmitting || jobStatus.isBusy }
-    var currentTaskTitle: String { isSubmitting ? "正在提交任务…" : "\(activeJob?.statusTitle ?? "正在处理")…" }
+    var currentTaskTitle: String { isSubmitting ? L10n.tr("task.submitting") : "\(activeJob?.statusTitle ?? L10n.tr("task.processing"))…" }
     var serverTaskMessage: String? {
         guard let message = jobStatus.busyMessage else { return nil }
-        return isConnected ? "\(message)，请等待任务完成。" : "上次同步：\(message)。重新连接后可确认进度。"
+        return isConnected ? L10n.tr("task.wait", message) : L10n.tr("task.offline", message)
     }
     var otherDeviceTaskMessage: String? { jobStatus.otherDeviceJob == nil ? nil : serverTaskMessage }
     var refreshableApps: [StoreApp] { apps.filter { includeSelf || !$0.isStore } }
     var needsAttention: Int { apps.filter { $0.remainingDays() <= 1 }.count }
-    var serverName: String { snapshot?.serverName ?? "你的 Mac" }
+    var serverName: String { snapshot?.serverName ?? L10n.tr("connection.yourMac") }
     var supportsSources: Bool { snapshot?.capabilities?.contains("sources") == true }
     var supportsUpdates: Bool { snapshot?.capabilities?.contains("updates") == true }
     var supportsProfileRefresh: Bool { snapshot?.capabilities?.contains("profile-refresh") == true }
@@ -91,7 +91,7 @@ final class StoreModel: ObservableObject {
         do {
             let canonical = try ServerAddress.parse(address).absoluteString
             let token = pairingToken.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !token.isEmpty else { throw StoreClientError.response("请输入 Mac 上显示的配对密钥。") }
+            guard !token.isEmpty else { throw StoreClientError.response(L10n.tr("error.emptyToken")) }
             let candidate = try StoreClient(address: canonical, token: token)
             let value = try await candidate.snapshot()
             try CredentialStore.save(token, for: canonical)
@@ -144,13 +144,13 @@ final class StoreModel: ObservableObject {
         defer { isSubmitting = false }
         let id = UUID().uuidString
         do { try journal.save(id, for: savedAddress) }
-        catch { self.error = "无法保存更新任务：\(error.localizedDescription)"; return }
+        catch { self.error = L10n.tr("error.saveUpdate", error.localizedDescription); return }
         requestID = id
         let request = RefreshRequest(requestID: id, deviceUDID: selectedDeviceID, appIDs: selection.map(\.id))
         selectedTab = 1
         do { latestJob = try await client.updateApps(request); stopPolling(); resumePolling() }
         catch {
-            let message = "\(connectionMessage(error)) 如果请求已送达，Mac 会继续更新；重新连接后可在活动中查看。"
+            let message = L10n.tr("error.uncertainUpdate", connectionMessage(error))
             await sync()
             self.error = message
         }
@@ -164,7 +164,7 @@ final class StoreModel: ObservableObject {
         // This is written before the HTTP request: a self-install can close the app before the response arrives.
         do { try journal.save(id, for: savedAddress) }
         catch {
-            self.error = "无法保存刷新任务：\(error.localizedDescription)"
+            self.error = L10n.tr("error.saveRefresh", error.localizedDescription)
             isSubmitting = false
             return
         }
@@ -175,7 +175,7 @@ final class StoreModel: ObservableObject {
             stopPolling()
             resumePolling()
         } catch {
-            let message = "\(connectionMessage(error)) 如果请求已送达，Mac 会继续执行；重新连接后可在活动中查看。"
+            let message = L10n.tr("error.uncertainRefresh", connectionMessage(error))
             // An uncertain response never causes an automatic duplicate refresh.
             await sync()
             self.error = message
@@ -214,14 +214,14 @@ final class StoreModel: ObservableObject {
         defer { isSubmitting = false }
         let id = UUID().uuidString
         do { try journal.save(id, for: savedAddress) }
-        catch { self.error = "无法保存安装任务：\(error.localizedDescription)"; return }
+        catch { self.error = L10n.tr("error.saveInstall", error.localizedDescription); return }
         requestID = id
         let request = StoreInstallRequest(requestID: id, deviceUDID: selectedDeviceID,
                                           sourceURL: source.id, bundleIdentifier: app.id)
         selectedTab = 1
         do { latestJob = try await client.install(request); stopPolling(); resumePolling() }
         catch {
-            let message = "\(connectionMessage(error)) 如果请求已送达，Mac 会继续安装；重新连接后可在活动中查看。"
+            let message = L10n.tr("error.uncertainInstall", connectionMessage(error))
             await sync()
             self.error = message
         }
@@ -303,7 +303,7 @@ final class StoreModel: ObservableObject {
     private func connectionMessage(_ error: Error) -> String {
         if let value = error as? URLError {
             if value.code == .notConnectedToInternet || value.code == .cannotConnectToHost || value.code == .cannotFindHost || value.code == .timedOut {
-                return "暂时无法连接 Mac。请确认同一 Wi-Fi、AutoSign 局域网服务已开启，并允许本地网络访问。"
+                return L10n.tr("error.connection")
             }
         }
         return error.localizedDescription
