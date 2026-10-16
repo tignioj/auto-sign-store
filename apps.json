@@ -19,10 +19,19 @@
       "appPermissions": {
         "entitlements": [],
         "privacy": {
-          "NSLocalNetworkUsageDescription": "发现同一 Wi-Fi 中的 AutoSign Mac，为此设备安装源中的应用，并刷新应用及 AutoSign Store 自身的签名。"
+          "NSLocalNetworkUsageDescription": "Discover AutoSign on a Mac on the same Wi-Fi to install apps from sources and refresh app signatures, including AutoSign Store itself."
         }
       },
       "versions": [
+        {
+          "version": "1.3.0",
+          "buildVersion": "7",
+          "date": "2026-10-16T17:29:57Z",
+          "localizedDescription": "**Full Changelog**: https://github.com/tignioj/auto-sign-store/compare/v1.2.1...v1.3.0",
+          "downloadURL": "https://github.com/tignioj/auto-sign-store/releases/download/v1.3.0/AutoSignStore.ipa",
+          "size": 509895,
+          "minOSVersion": "17.0"
+        },
         {
           "version": "1.2.1",
           "buildVersion": "6",
