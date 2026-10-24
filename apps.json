@@ -24,6 +24,15 @@
       },
       "versions": [
         {
+          "version": "1.4.1",
+          "buildVersion": "10",
+          "date": "2026-10-24T06:24:24Z",
+          "localizedDescription": "**Full Changelog**: https://github.com/tignioj/auto-sign-store/compare/v1.4.0...v1.4.1",
+          "downloadURL": "https://github.com/tignioj/auto-sign-store/releases/download/v1.4.1/AutoSignStore.ipa",
+          "size": 520364,
+          "minOSVersion": "17.0"
+        },
+        {
           "version": "1.3.1",
           "buildVersion": "8",
           "date": "2026-10-24T05:32:23Z",
