@@ -203,7 +203,7 @@ private struct SourceAppDetailView: View {
                     }
                 }
                 Section {
-                    Picker(L10n.tr("sources.installDevice"), selection: $model.selectedDeviceID) {
+                    Picker(L10n.tr("sources.installDevice"), selection: Binding(get: { model.selectedDeviceID }, set: model.selectDevice)) {
                         Text(L10n.tr("apps.selectDevice")).tag("")
                         ForEach(model.devices) { device in Text(device.isReady ? device.name : L10n.tr("device.notReady", device.name)).tag(device.id) }
                     }.disabled(model.isSubmitting)

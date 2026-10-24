@@ -13,7 +13,7 @@ struct AppsView: View {
                 } else {
                     connectionPill
                     summary
-                    if model.devices.count > 0 { devicePicker }
+                    devicePicker
                     if let message = model.otherDeviceTaskMessage {
                         StoreCard {
                             Label(message, systemImage: "desktopcomputer")
@@ -140,13 +140,13 @@ struct AppsView: View {
 
     private var devicePicker: some View {
         VStack(alignment: .leading, spacing: 7) {
-            Picker(L10n.tr("apps.device"), selection: $model.selectedDeviceID) {
+            Picker(L10n.tr("apps.device"), selection: Binding(get: { model.selectedDeviceID }, set: model.selectDevice)) {
                 Text(L10n.tr("apps.selectDevice")).tag("")
                 ForEach(model.devices) { device in
                     Text(device.isReady ? device.name : L10n.tr("device.notReady", device.name)).tag(device.id)
                 }
-            }.pickerStyle(.menu).disabled(model.isSubmitting)
-            Text(L10n.tr("apps.deviceHint"))
+            }.pickerStyle(.menu).disabled(model.isSubmitting || model.devices.isEmpty)
+            Text(model.deviceSelectionHint)
                 .font(.caption2).foregroundStyle(.secondary)
             if let device = model.currentDevice, !device.isReady {
                 Text(L10n.tr("apps.deviceNotReady"))

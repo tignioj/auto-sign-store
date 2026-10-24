@@ -5,9 +5,7 @@ import UIKit
 final class StoreModel: ObservableObject {
     @Published var address: String
     @Published var pairingToken = ""
-    @Published var selectedDeviceID: String {
-        didSet { UserDefaults.standard.set(selectedDeviceID, forKey: "deviceID.\(savedAddress)") }
-    }
+    @Published private(set) var selectedDeviceID: String
     @Published private(set) var snapshot: StoreSnapshot?
     @Published private(set) var isConnected = false
     @Published private(set) var isLoading = false
@@ -20,6 +18,7 @@ final class StoreModel: ObservableObject {
     @Published private(set) var isCheckingUpdates = false
     @Published var selectedTab = 0
     @Published var includeSelf = true
+    private let deviceBinding: StoreDeviceBinding
     private var savedAddress: String
     private var client: StoreClient?
     private var connectionTask: Task<Void, Never>?
@@ -31,10 +30,12 @@ final class StoreModel: ObservableObject {
     private let journal = RefreshJournal(directory: URL.applicationSupportDirectory.appendingPathComponent("AutoSignStore"))
 
     init() {
+        let binding = StoreDeviceBinding()
+        self.deviceBinding = binding
         let address = UserDefaults.standard.string(forKey: "serverAddress") ?? ""
         self.address = address
         self.savedAddress = address
-        self.selectedDeviceID = UserDefaults.standard.string(forKey: "deviceID.\(address)") ?? ""
+        self.selectedDeviceID = binding.preferredSelection(for: address)
         if let token = CredentialStore.load(for: address), !address.isEmpty {
             client = try? StoreClient(address: address, token: token)
         }
@@ -44,11 +45,21 @@ final class StoreModel: ObservableObject {
         if let data = UserDefaults.standard.data(forKey: "cachedSnapshot.\(address)"),
            let value = try? StoreJSON.decoder().decode(StoreSnapshot.self, from: data) {
             snapshot = value
+            selectedDeviceID = binding.resolveSelection(selectedDeviceID, devices: value.devices, preferLocalDevice: true)
         }
     }
 
     var devices: [StoreDevice] { snapshot?.devices ?? [] }
     var currentDevice: StoreDevice? { devices.first { $0.id == selectedDeviceID } }
+    func selectDevice(_ id: String) {
+        selectedDeviceID = id
+        deviceBinding.saveSelection(id, for: savedAddress)
+    }
+
+    var deviceSelectionHint: String {
+        guard let localID = deviceBinding.deviceID else { return L10n.tr("apps.deviceHint") }
+        return L10n.tr(devices.contains { $0.id == localID } ? "apps.deviceBound" : "apps.deviceBoundMissing")
+    }
     var apps: [StoreApp] {
         (snapshot?.apps ?? []).filter { $0.deviceUDID == selectedDeviceID }
             .sorted { lhs, rhs in
@@ -103,12 +114,12 @@ final class StoreModel: ObservableObject {
                 savedAddress = canonical
                 address = canonical
                 UserDefaults.standard.set(canonical, forKey: "serverAddress")
-                selectedDeviceID = UserDefaults.standard.string(forKey: "deviceID.\(canonical)") ?? ""
+                selectedDeviceID = deviceBinding.preferredSelection(for: canonical)
                 requestID = try? journal.load(for: canonical)
                 latestJob = nil
                 sources = []; sourceError = nil
                 pairingToken = ""
-                accept(value)
+                accept(value, preferLocalDevice: true)
                 await loadSources()
                 guard isCurrentConnection(generation) else { return }
                 resumePolling()
@@ -125,7 +136,7 @@ final class StoreModel: ObservableObject {
             do {
                 let value = try await client.snapshot()
                 guard isCurrentConnection(generation) else { return }
-                accept(value)
+                accept(value, preferLocalDevice: !isConnected)
                 if reportErrors { error = nil }
                 await loadSources()
                 guard isCurrentConnection(generation) else { return }
@@ -308,8 +319,14 @@ final class StoreModel: ObservableObject {
 
     func clearError() { error = nil }
 
-    private func accept(_ value: StoreSnapshot) {
+    private func accept(_ value: StoreSnapshot, preferLocalDevice: Bool = false) {
         snapshot = value
+        // Keep the remembered choice when discovery temporarily returns no
+        // matching device, so legacy installations can recover on a later sync.
+        let preferred = selectedDeviceID.isEmpty ? deviceBinding.preferredSelection(for: savedAddress) : selectedDeviceID
+        selectedDeviceID = deviceBinding.resolveSelection(preferred, devices: value.devices,
+                                                         preferLocalDevice: preferLocalDevice)
+        if !selectedDeviceID.isEmpty { deviceBinding.saveSelection(selectedDeviceID, for: savedAddress) }
         if let data = try? StoreJSON.encoder().encode(value) {
             UserDefaults.standard.set(data, forKey: "cachedSnapshot.\(savedAddress)")
         }

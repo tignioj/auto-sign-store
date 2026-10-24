@@ -10,7 +10,9 @@
 "apps.detail.refreshHint" = "Reinstalls the original IPA saved on your Mac, keeping the same app identifier and signing team.";
 "apps.detail.selfHint" = "Your Mac signs and reinstalls Store. Store may close. Reopen it to recover the task result.";
 "apps.device" = "This Device";
-"apps.deviceHint" = "Check the device name. iOS does not let apps read this device’s UDID automatically.";
+"apps.deviceHint" = "This installation has no device binding. Select this device once to remember your choice. Update Store using a newer Mac app to enable automatic identification.";
+"apps.deviceBound" = "This device is bound and selected automatically when connecting. You can also switch to manage other devices.";
+"apps.deviceBoundMissing" = "This Mac has not found the bound device. Check pairing and connectivity, or manually select another device.";
 "apps.deviceNotReady" = "Device not ready. Unlock it and check USB pairing, Wi-Fi, and Developer Mode.";
 "apps.empty.detail" = "Add a source and choose an app in Sources. Your Mac downloads, signs, and installs it, then it appears here. You can also install a local IPA from your Mac.";
 "apps.empty.selectDevice" = "Select this device first";

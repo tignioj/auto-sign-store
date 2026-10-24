@@ -96,7 +96,8 @@ struct ConnectionView: View {
                 guide("arrow.clockwise", L10n.tr("connection.self.title"), L10n.tr("connection.self.detail"))
             }
             Section {
-                Text("AutoSign Store 1.2 · iOS 17+").font(.caption).foregroundStyle(.secondary)
+                Text("AutoSign Store \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") · iOS 17+")
+                    .font(.caption).foregroundStyle(.secondary)
                 Text(L10n.tr("connection.appleHint"))
                     .font(.caption).foregroundStyle(.secondary)
             }

@@ -10,7 +10,9 @@
 "apps.detail.refreshHint" = "使用 Mac 保存的原始 IPA 覆盖安装，保持应用标识和签名团队一致。";
 "apps.detail.selfHint" = "Mac 会重新签名并覆盖安装 Store。应用可能关闭，重新打开后会恢复任务结果。";
 "apps.device" = "本机设备";
-"apps.deviceHint" = "请核对设备名称。iOS 不允许应用自动读取本机 UDID。";
+"apps.deviceHint" = "此次安装未包含设备绑定。请核对并选择本机，之后会记住选择；用新版 Mac 更新 Store 后可自动识别。";
+"apps.deviceBound" = "已绑定本机，连接时会自动选择。也可手动切换，管理其他设备。";
+"apps.deviceBoundMissing" = "此 Mac 尚未找到绑定的本机。请检查设备配对与连接，也可手动选择其他设备。";
 "apps.deviceNotReady" = "设备未就绪：解锁设备，确认首次 USB 配对、Wi-Fi 连接和开发者模式。";
 "apps.empty.detail" = "在“应用源”添加源并选择应用，让 Mac 自动下载、签名和安装。安装成功后会显示在这里，也可以在 Mac 安装本地 IPA。";
 "apps.empty.selectDevice" = "先选择这台设备";
