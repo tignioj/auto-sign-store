@@ -22,6 +22,8 @@ final class StoreModel: ObservableObject {
     @Published var includeSelf = true
     private var savedAddress: String
     private var client: StoreClient?
+    private var connectionTask: Task<Void, Never>?
+    private var connectionGeneration = UUID()
     private var pollTask: Task<Void, Never>?
     private var pollGeneration = UUID()
     private var isForeground = true
@@ -86,44 +88,90 @@ final class StoreModel: ObservableObject {
 
     func pair() async {
         guard canChangeConnection else { return }
-        isLoading = true; error = nil
-        defer { isLoading = false }
-        do {
-            let canonical = try ServerAddress.parse(address).absoluteString
-            let token = pairingToken.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !token.isEmpty else { throw StoreClientError.response(L10n.tr("error.emptyToken")) }
-            let candidate = try StoreClient(address: canonical, token: token)
-            let value = try await candidate.snapshot()
-            try CredentialStore.save(token, for: canonical)
-            stopPolling()
-            client = candidate
-            savedAddress = canonical
-            address = canonical
-            UserDefaults.standard.set(canonical, forKey: "serverAddress")
-            selectedDeviceID = UserDefaults.standard.string(forKey: "deviceID.\(canonical)") ?? ""
-            requestID = try? journal.load(for: canonical)
-            latestJob = nil
-            sources = []; sourceError = nil
-            pairingToken = ""
-            accept(value)
-            await loadSources()
-            resumePolling()
-        } catch { self.error = error.localizedDescription }
+        error = nil
+        await runConnection { [self] generation in
+            do {
+                let canonical = try ServerAddress.parse(address).absoluteString
+                let token = pairingToken.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !token.isEmpty else { throw StoreClientError.response(L10n.tr("error.emptyToken")) }
+                let candidate = try StoreClient(address: canonical, token: token)
+                let value = try await candidate.snapshot()
+                guard isCurrentConnection(generation) else { return }
+                try CredentialStore.save(token, for: canonical)
+                stopPolling()
+                client = candidate
+                savedAddress = canonical
+                address = canonical
+                UserDefaults.standard.set(canonical, forKey: "serverAddress")
+                selectedDeviceID = UserDefaults.standard.string(forKey: "deviceID.\(canonical)") ?? ""
+                requestID = try? journal.load(for: canonical)
+                latestJob = nil
+                sources = []; sourceError = nil
+                pairingToken = ""
+                accept(value)
+                await loadSources()
+                guard isCurrentConnection(generation) else { return }
+                resumePolling()
+            } catch {
+                guard isCurrentConnection(generation) else { return }
+                self.error = error.localizedDescription
+            }
+        }
     }
 
     func sync(reportErrors: Bool = true) async {
-        guard let client, !isLoading, !isCheckingUpdates, !isSubmitting || reportErrors else { return }
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            accept(try await client.snapshot())
-            if reportErrors { error = nil }
-            await loadSources()
-            resumePolling()
-        } catch {
-            isConnected = false
-            if reportErrors { self.error = connectionMessage(error) }
+        guard let client, !isLoading, !isManagingSources, !isCheckingUpdates, !isSubmitting || reportErrors else { return }
+        await runConnection { [self] generation in
+            do {
+                let value = try await client.snapshot()
+                guard isCurrentConnection(generation) else { return }
+                accept(value)
+                if reportErrors { error = nil }
+                await loadSources()
+                guard isCurrentConnection(generation) else { return }
+                resumePolling()
+            } catch {
+                guard isCurrentConnection(generation) else { return }
+                isConnected = false
+                if reportErrors { self.error = connectionMessage(error) }
+            }
         }
+    }
+
+    func cancelConnection() {
+        guard isLoading else { return }
+        connectionGeneration = UUID()
+        connectionTask?.cancel()
+        connectionTask = nil
+        stopPolling()
+        isLoading = false
+        isManagingSources = false
+    }
+
+    private func runConnection(_ operation: @escaping @MainActor (UUID) async -> Void) async {
+        let generation = UUID()
+        connectionGeneration = generation
+        isLoading = true
+        let task = Task {
+            defer {
+                // A cancelled attempt must not clear a newer attempt's loading state.
+                if connectionGeneration == generation {
+                    connectionTask = nil
+                    isLoading = false
+                }
+            }
+            await operation(generation)
+        }
+        connectionTask = task
+        await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
+        }
+    }
+
+    private func isCurrentConnection(_ generation: UUID) -> Bool {
+        connectionGeneration == generation && !Task.isCancelled
     }
 
     func checkUpdates() async {
@@ -185,10 +233,18 @@ final class StoreModel: ObservableObject {
 
     func loadSources() async {
         guard let client, isConnected, supportsSources, !isManagingSources else { return }
+        let generation = connectionGeneration
         isManagingSources = true
-        defer { isManagingSources = false }
-        do { acceptSources(try await client.sources()); sourceError = nil }
-        catch { sourceError = connectionMessage(error) }
+        defer { if connectionGeneration == generation { isManagingSources = false } }
+        do {
+            let value = try await client.sources()
+            guard isCurrentConnection(generation) else { return }
+            acceptSources(value)
+            sourceError = nil
+        } catch {
+            guard isCurrentConnection(generation) else { return }
+            sourceError = connectionMessage(error)
+        }
     }
 
     @discardableResult

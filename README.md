@@ -40,6 +40,8 @@ Supports **English and Simplified Chinese**, following the system language by de
 5. 手机打开 Store 的“连接”，允许本地网络权限，选择发现的 Mac，粘贴 Mac 显示的配对密钥并连接。发现失败时，可手动输入 `http://Mac的局域网IP:8091` 或 Mac 的 `.local` 地址。
 6. 在“我的应用”明确选择这台手机 / 平板。iOS 不提供通用的本机 UDID 读取接口，需要核对设备名称。
 
+连接或同步状态等待过久时，可在“连接”页点击 **取消连接**，立即恢复操作，再修改地址或重新连接。取消会停止本次请求并保留已保存的配对信息；改地址后需输入配对密钥并点击 **配对并连接**，成功后才保存新地址。
+
 也可以从 [GitHub Releases](https://github.com/tignioj/auto-sign-store/releases) 下载 `AutoSignStore.ipa`。首次安装 Store 需要 Mac；安装后可在手机“应用源”安装 Store 新版，或在“我的应用”更新，由 Mac 完成下载及覆盖安装。
 
 应用列表来自 AutoSign 的成功安装记录；未纳入管理的旧应用需用新版 AutoSign 覆盖安装一次。每个应用需要匹配自己 Bundle ID 的描述文件；复用同一个明确 Bundle ID 的描述文件签多个应用，会导致标识相同并互相覆盖。后续续签或升级需保持原应用标识和签名团队一致。

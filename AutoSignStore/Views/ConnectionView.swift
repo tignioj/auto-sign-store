@@ -72,7 +72,15 @@ struct ConnectionView: View {
                         Spacer()
                         if model.isLoading { ProgressView() } else { Image(systemName: "arrow.right") }
                     }
-                }.disabled(!model.canChangeConnection || model.address.isEmpty || model.pairingToken.isEmpty)
+                }
+                .accessibilityIdentifier("pairConnectionButton")
+                .disabled(!model.canChangeConnection || model.address.isEmpty || model.pairingToken.isEmpty)
+                if model.isLoading {
+                    Button(role: .cancel) { model.cancelConnection() } label: {
+                        Label(L10n.tr("connection.cancel"), systemImage: "xmark.circle")
+                    }
+                    .accessibilityIdentifier("cancelConnectionButton")
+                }
             } header: { Text(L10n.tr("connection.pairSection")) }
               footer: { Text(L10n.tr("connection.securityHint")) }
             if model.hasCredentials {

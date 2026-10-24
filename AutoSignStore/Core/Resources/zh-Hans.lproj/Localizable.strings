@@ -57,6 +57,7 @@
 "connection.address" = "Mac 地址";
 "connection.addressAccessibility" = "Mac 局域网地址";
 "connection.appleHint" = "续签会向 Apple 请求新描述文件。免费账号刷新成功后获得新 7 天签名；未签发新文件时会显示失败。Mac 上的 Xcode 账号需要保持有效。";
+"connection.cancel" = "取消连接";
 "connection.connected" = "局域网服务已连接";
 "connection.connecting" = "正在连接…";
 "connection.developer.detail" = "前往设置 → 隐私与安全性 → 开发者模式，按系统提示重启。";

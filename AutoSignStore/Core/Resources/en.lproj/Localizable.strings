@@ -57,6 +57,7 @@
 "connection.address" = "Mac Address";
 "connection.addressAccessibility" = "Mac Local Network Address";
 "connection.appleHint" = "Refreshing requests a new provisioning profile from Apple. Free accounts receive a new 7-day signature on success. If no new profile is issued, the refresh fails. Keep your Xcode account on your Mac signed in and valid.";
+"connection.cancel" = "Cancel Connection";
 "connection.connected" = "Local network service connected";
 "connection.connecting" = "Connecting…";
 "connection.developer.detail" = "Go to Settings → Privacy & Security → Developer Mode, then restart as prompted.";
