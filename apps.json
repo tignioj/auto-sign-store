@@ -27,7 +27,7 @@
           "version": "1.4.1",
           "buildVersion": "10",
           "date": "2026-10-24T06:24:24Z",
-          "localizedDescription": "**Full Changelog**: https://github.com/tignioj/auto-sign-store/compare/v1.4.0...v1.4.1",
+          "localizedDescription": "连接 Mac 后，AutoSign Store 会根据安装时写入的设备绑定自动选中本机，免去首次手动核对设备的步骤。\n\n- 配合 Mac AutoSign 1.11.0：安装、更新和重新签名时写入实际目标设备的绑定，手机会本地保存绑定。\n- 重开及重新连接优先选择本机；普通同步保留手动切换的设备。本机暂时不可用时显示提示。\n- 兼容已有配对和旧版手动选择记录；没有安装绑定时仍可手动选择。覆盖更新到新版后启用自动识别。\n- 使用显式设备选择回调，兼容 Swift 6.1 发布构建；连接页显示实际应用版本。\n\n已在 iPadmini7（iPad mini A17 Pro，iPadOS 27.0.1）验证：1.3.0 → 1.4.0 → 1.4.1 覆盖升级、连接后自动选中、完整重新签名及仅更新描述文件后绑定保留。35 项核心测试和 7 项源生成测试通过。\n\n下载的 IPA 是通用未签名包，请使用 Mac AutoSign 签名安装。推荐同时更新 Mac 至 1.11.0。\n\n[完整变更](https://github.com/tignioj/auto-sign-store/compare/v1.3.1...v1.4.1) · [真机验证记录](https://github.com/tignioj/auto-sign/blob/main/docs/device-binding-verification.md)",
           "downloadURL": "https://github.com/tignioj/auto-sign-store/releases/download/v1.4.1/AutoSignStore.ipa",
           "size": 520364,
           "minOSVersion": "17.0"
