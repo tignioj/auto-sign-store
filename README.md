@@ -25,7 +25,7 @@ Supports **English and Simplified Chinese**, following the system language by de
 | 手机源管理与安装 | 1.1.0 | 1.3.0 |
 | 源更新检测与一键更新 | 1.2.0 | 1.4.0 |
 | 优先仅更新描述文件续签 | 兼容旧客户端，界面说明需 1.2.0 | 1.4.1 |
-| 安装时绑定本机并自动选择 | 1.4.0 | 1.11.0 |
+| 安装时绑定本机并自动选择 | 1.4.1 | 1.11.0 |
 
 ## 首次安装与连接
 
@@ -195,5 +195,7 @@ xcodebuild -project AutoSignStore.xcodeproj -scheme AutoSignStore \
 真机验证已覆盖无线源下载及覆盖安装、免费账号新 7 天续签、仅更新描述文件、Store 自身刷新及重开恢复。“更新 / 一键更新全部”流程已通过自动化测试和模拟器验证，尚未完成该流程的真实 Apple 签名及真机版本升级实测；实际续签与安装仍需在自己的设备、Xcode 账号和描述文件环境中验证。
 
 2026-10-24，Store 1.4.0 配合 Mac 1.11.0 在 iPadmini7（iPad mini A17 Pro，iPadOS 27.0.1）通过旧版 1.3.0 覆盖升级、连接后自动选中本机、完整重新签名后保持绑定，以及仅更新描述文件续签后保持绑定的真机验证。旧选择指向其他设备时仍优先使用安装绑定。详见 [设备绑定验证记录](https://github.com/tignioj/auto-sign/blob/main/docs/device-binding-verification.md)。
+
+同日另将已绑定的 1.4.0 覆盖升级至 1.4.1（build 10），确认版本升级保留绑定，重开自动连接并选择 iPadmini7。1.4.1 改用显式的设备选择回调，以兼容发布机 Swift 6.1 编译器；1.4.0 标签的远端构建失败，未发布该版本的 Release。
 
 参考：[AltServer 的 Wi-Fi 工作方式](https://faq.altstore.io/altstore-classic/altserver)、[Apple 本地网络权限](https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy)、[Apple 本地网络 ATS 配置](https://developer.apple.com/documentation/bundleresources/information-property-list/nsapptransportsecurity/nsallowslocalnetworking)。
