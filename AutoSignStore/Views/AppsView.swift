@@ -140,7 +140,7 @@ struct AppsView: View {
 
     private var devicePicker: some View {
         VStack(alignment: .leading, spacing: 7) {
-            Picker(L10n.tr("apps.device"), selection: Binding(get: { model.selectedDeviceID }, set: model.selectDevice)) {
+            Picker(L10n.tr("apps.device"), selection: Binding(get: { model.selectedDeviceID }, set: { model.selectDevice($0) })) {
                 Text(L10n.tr("apps.selectDevice")).tag("")
                 ForEach(model.devices) { device in
                     Text(device.isReady ? device.name : L10n.tr("device.notReady", device.name)).tag(device.id)
