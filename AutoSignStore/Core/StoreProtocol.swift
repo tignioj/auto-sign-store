@@ -47,6 +47,11 @@ public struct RefreshJob: Codable, Identifiable, Sendable {
     public var updatedAt: Date
     public var installRequest: StoreInstallRequest? = nil
     public var updateRequest: RefreshRequest? = nil
+    public var uploadedIPA: StoreUploadedIPA? = nil
+}
+
+public struct StoreUploadedIPA: Codable, Equatable, Sendable {
+    public let sha256: String
 }
 
 public struct StoreSnapshot: Codable, Sendable {

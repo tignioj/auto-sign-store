@@ -45,7 +45,8 @@ struct StoreJobStatus {
 extension RefreshJob {
     fileprivate var operationKey: String {
         if updateRequest != nil { return "update" }
-        return installRequest == nil ? "refresh" : "install"
+        if installRequest != nil || uploadedIPA != nil { return "install" }
+        return "refresh"
     }
 
     var operationTitle: String { L10n.tr("task.operation.\(operationKey)") }

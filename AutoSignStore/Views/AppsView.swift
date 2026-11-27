@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct AppsView: View {
     @ObservedObject var model: StoreModel
@@ -14,6 +15,7 @@ struct AppsView: View {
                     connectionPill
                     summary
                     devicePicker
+                    IPAInstallView(model: model)
                     if let message = model.otherDeviceTaskMessage {
                         StoreCard {
                             Label(message, systemImage: "desktopcomputer")
@@ -277,6 +279,63 @@ struct AppsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.subheadline.bold())
                 Text(detail).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+private struct IPAInstallView: View {
+    @ObservedObject var model: StoreModel
+    @State private var isPicking = false
+    @State private var pickerTarget: IPAInstallTarget?
+    @State private var file: URL?
+    @State private var pickerError: String?
+
+    var body: some View {
+        StoreCard {
+            VStack(alignment: .leading, spacing: 10) {
+                if let file, let target = pickerTarget, target == model.ipaInstallTarget, let device = model.currentDevice {
+                    Label(file.lastPathComponent, systemImage: "doc").font(.headline)
+                    Text(L10n.tr("ipa.confirm", model.serverName, device.name))
+                        .font(.subheadline).foregroundStyle(.secondary)
+                    HStack {
+                        Button(L10n.tr("ipa.install")) {
+                            self.file = nil
+                            Task { await model.installIPA(file, on: target) }
+                        }.buttonStyle(.borderedProminent).disabled(!model.canInstallIPA)
+                        Button(L10n.tr("common.cancel"), role: .cancel) { self.file = nil }
+                    }
+                } else {
+                    Button {
+                        pickerError = nil
+                        pickerTarget = model.ipaInstallTarget
+                        isPicking = true
+                    } label: {
+                        Label(L10n.tr("ipa.choose"), systemImage: "folder")
+                    }.disabled(!model.canInstallIPA)
+                    if model.isConnected && !model.supportsIPAInstall {
+                        Text(L10n.tr("ipa.upgradeMac")).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                if let pickerError { Text(pickerError).font(.caption).foregroundStyle(.orange) }
+            }
+        }
+        .fileImporter(isPresented: $isPicking, allowedContentTypes: [UTType(importedAs: "com.apple.itunes.ipa")]) { result in
+            do {
+                let url = try result.get()
+                guard url.pathExtension.lowercased() == "ipa" else { pickerError = L10n.tr("ipa.invalidFile"); return }
+                guard pickerTarget != nil, pickerTarget == model.ipaInstallTarget else {
+                    pickerError = L10n.tr("ipa.targetChanged"); return
+                }
+                file = url
+            } catch let error as CocoaError where error.code == .userCancelled {
+                return
+            } catch { pickerError = L10n.tr("ipa.readError", error.localizedDescription) }
+        }
+        .onChange(of: model.ipaInstallTarget) { _, target in
+            if file != nil && target != pickerTarget {
+                file = nil
+                pickerError = L10n.tr("ipa.targetChanged")
             }
         }
     }

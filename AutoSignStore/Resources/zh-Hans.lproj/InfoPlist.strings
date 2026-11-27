@@ -1,1 +1,1 @@
-"NSLocalNetworkUsageDescription" = "发现同一 Wi-Fi 中的 AutoSign Mac，为此设备安装源中的应用，并刷新应用及 AutoSign Store 自身的签名。";
+"NSLocalNetworkUsageDescription" = "通过 Wi-Fi 连接你的 Mac，发送所选 IPA 文件、安装应用源中的应用，并刷新应用签名。";

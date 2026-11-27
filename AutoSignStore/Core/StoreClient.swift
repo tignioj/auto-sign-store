@@ -1,14 +1,14 @@
 import Foundation
 
 public enum StoreClientError: LocalizedError {
-    case invalidAddress, unauthorized, incompatibleServer, response(String)
+    case invalidAddress, unauthorized, incompatibleServer, invalidIPA(String), response(String)
 
     public var errorDescription: String? {
         switch self {
         case .invalidAddress: L10n.tr("error.invalidAddress")
         case .unauthorized: L10n.tr("error.unauthorized")
         case .incompatibleServer: L10n.tr("error.incompatibleServer")
-        case .response(let message): message
+        case .invalidIPA(let message), .response(let message): message
         }
     }
 }
@@ -98,19 +98,82 @@ public struct StoreClient: Sendable {
         try await send(path: "v1/install", body: StoreJSON.encoder().encode(request))
     }
 
+    public func installIPA(at url: URL, requestID: String, deviceUDID: String) async throws -> RefreshJob {
+        guard url.isFileURL, url.pathExtension.lowercased() == "ipa" else {
+            throw StoreClientError.invalidIPA(L10n.tr("ipa.invalidFile"))
+        }
+        let staged = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).ipa")
+        defer { try? FileManager.default.removeItem(at: staged) }
+        let size = try Self.stageIPA(at: url, to: staged)
+        try Task.checkCancellation()
+
+        var request = authenticatedRequest(path: "v1/install/ipa")
+        request.httpMethod = "POST"
+        request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        request.setValue(String(size), forHTTPHeaderField: "Content-Length")
+        request.setValue(requestID, forHTTPHeaderField: "X-Request-ID")
+        request.setValue(deviceUDID, forHTTPHeaderField: "X-Device-UDID")
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._~"))
+        request.setValue(url.lastPathComponent.addingPercentEncoding(withAllowedCharacters: allowed),
+                         forHTTPHeaderField: "X-IPA-Filename")
+
+        let configuration = session.configuration
+        configuration.timeoutIntervalForResource = 60 * 60
+        let uploadSession = URLSession(configuration: configuration, delegate: NoRedirects(), delegateQueue: nil)
+        defer { uploadSession.finishTasksAndInvalidate() }
+        let (data, response) = try await uploadSession.upload(for: request, fromFile: staged)
+        return try decode(data, response)
+    }
+
+    /// File providers can move or replace a document. Keep a coordinated snapshot until the request finishes.
+    private static func stageIPA(at url: URL, to destination: URL) throws -> Int {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        var coordinationError: NSError?
+        var result: Result<Int, Error>?
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinationError) { file in
+            result = Result {
+                let values = try file.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+                guard values.isRegularFile == true, let size = values.fileSize, size > 0 else {
+                    throw StoreClientError.invalidIPA(L10n.tr("ipa.invalidFile"))
+                }
+                guard size <= 4 * 1024 * 1024 * 1024 else {
+                    throw StoreClientError.invalidIPA(L10n.tr("ipa.tooLarge"))
+                }
+                try FileManager.default.copyItem(at: file, to: destination)
+                return size
+            }
+        }
+        do {
+            if let coordinationError { throw coordinationError }
+            guard let result else { throw StoreClientError.invalidIPA(L10n.tr("ipa.invalidFile")) }
+            return try result.get()
+        } catch let error as StoreClientError { throw error }
+        catch { throw StoreClientError.invalidIPA(L10n.tr("ipa.readError", error.localizedDescription)) }
+    }
+
     public func job(_ id: String) async throws -> RefreshJob {
         guard UUID(uuidString: id) != nil else { throw StoreClientError.response(L10n.tr("error.invalidJob")) }
         return try await send(path: "v1/jobs/\(id)")
     }
 
-    private func send<T: Decodable>(path: String, body: Data? = nil) async throws -> T {
+    private func authenticatedRequest(path: String) -> URLRequest {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue(L10n.language.resolved().rawValue, forHTTPHeaderField: "Accept-Language")
+        return request
+    }
+
+    private func send<T: Decodable>(path: String, body: Data? = nil) async throws -> T {
+        var request = authenticatedRequest(path: path)
         request.httpMethod = body == nil ? "GET" : "POST"
         request.httpBody = body
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(L10n.language.resolved().rawValue, forHTTPHeaderField: "Accept-Language")
         let (data, response) = try await session.data(for: request)
+        return try decode(data, response)
+    }
+
+    private func decode<T: Decodable>(_ data: Data, _ response: URLResponse) throws -> T {
         guard let http = response as? HTTPURLResponse else { throw StoreClientError.response(L10n.tr("error.invalidResponse")) }
         if http.statusCode == 401 { throw StoreClientError.unauthorized }
         guard (200..<300).contains(http.statusCode) else {

@@ -1,6 +1,11 @@
 import Foundation
 import UIKit
 
+struct IPAInstallTarget: Equatable {
+    let address: String
+    let deviceUDID: String
+}
+
 @MainActor
 final class StoreModel: ObservableObject {
     @Published var address: String
@@ -10,6 +15,7 @@ final class StoreModel: ObservableObject {
     @Published private(set) var isConnected = false
     @Published private(set) var isLoading = false
     @Published private(set) var isSubmitting = false
+    @Published private(set) var uploadingFilename: String?
     @Published private var latestJob: RefreshJob?
     @Published private(set) var error: String?
     @Published private(set) var sources: [SavedAppSource] = []
@@ -93,6 +99,12 @@ final class StoreModel: ObservableObject {
     }
     var canManageSources: Bool { isConnected && supportsSources && !isLoading && !isManagingSources && !isServerBusy && !isCheckingUpdates }
     var canInstall: Bool { canRefresh && snapshot?.capabilities?.contains("install") == true }
+    var supportsIPAInstall: Bool { snapshot?.capabilities?.contains("install-ipa") == true }
+    var ipaInstallTarget: IPAInstallTarget? {
+        guard supportsIPAInstall, isConnected, let device = currentDevice, device.isReady else { return nil }
+        return IPAInstallTarget(address: savedAddress, deviceUDID: device.id)
+    }
+    var canInstallIPA: Bool { canRefresh && supportsIPAInstall }
     var canRefresh: Bool { isConnected && currentDevice?.isReady == true && !isLoading && !isServerBusy && !isManagingSources && !isCheckingUpdates }
     var canUpdate: Bool { canRefresh && supportsUpdates }
     var canChangeConnection: Bool { !isLoading && !isSubmitting && !isManagingSources && !isCheckingUpdates && (!isServerBusy || !isConnected) }
@@ -131,7 +143,8 @@ final class StoreModel: ObservableObject {
     }
 
     func sync(reportErrors: Bool = true) async {
-        guard let client, !isLoading, !isManagingSources, !isCheckingUpdates, !isSubmitting || reportErrors else { return }
+        guard let client, !isLoading, !isManagingSources, !isCheckingUpdates, uploadingFilename == nil,
+              !isSubmitting || reportErrors else { return }
         await runConnection { [self] generation in
             do {
                 let value = try await client.snapshot()
@@ -277,18 +290,36 @@ final class StoreModel: ObservableObject {
 
     func install(_ app: SourceApp, from source: SavedAppSource) async {
         guard let client, canInstall, app.latestVersion != nil else { return }
+        let deviceID = selectedDeviceID
+        await submitInstall { id in
+            let request = StoreInstallRequest(requestID: id, deviceUDID: deviceID,
+                                              sourceURL: source.id, bundleIdentifier: app.id)
+            return try await client.install(request)
+        }
+    }
+
+    func installIPA(_ url: URL, on target: IPAInstallTarget) async {
+        guard let client, ipaInstallTarget == target else { error = L10n.tr("ipa.targetChanged"); return }
+        guard canInstallIPA else { error = serverTaskMessage ?? L10n.tr("ipa.tryAgain"); return }
+        await submitInstall(uploading: url.lastPathComponent) { id in
+            try await client.installIPA(at: url, requestID: id, deviceUDID: target.deviceUDID)
+        }
+    }
+
+    private func submitInstall(uploading filename: String? = nil, operation: (String) async throws -> RefreshJob) async {
         isSubmitting = true; error = nil
-        defer { isSubmitting = false }
+        uploadingFilename = filename
+        defer { uploadingFilename = nil; isSubmitting = false; resumePolling() }
         let id = UUID().uuidString
         do { try journal.save(id, for: savedAddress) }
         catch { self.error = L10n.tr("error.saveInstall", error.localizedDescription); return }
         requestID = id
-        let request = StoreInstallRequest(requestID: id, deviceUDID: selectedDeviceID,
-                                          sourceURL: source.id, bundleIdentifier: app.id)
         selectedTab = 1
-        do { latestJob = try await client.install(request); stopPolling(); resumePolling() }
+        do { latestJob = try await operation(id); stopPolling() }
+        catch StoreClientError.invalidIPA(let message) { self.error = message }
         catch {
             let message = L10n.tr("error.uncertainInstall", connectionMessage(error))
+            uploadingFilename = nil
             await sync()
             self.error = message
         }

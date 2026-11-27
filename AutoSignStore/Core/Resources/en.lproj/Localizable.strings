@@ -14,7 +14,7 @@
 "apps.deviceBound" = "This device is bound and selected automatically when connecting. You can also switch to manage other devices.";
 "apps.deviceBoundMissing" = "This Mac has not found the bound device. Check pairing and connectivity, or manually select another device.";
 "apps.deviceNotReady" = "Device not ready. Unlock it and check USB pairing, Wi-Fi, and Developer Mode.";
-"apps.empty.detail" = "Add a source and choose an app in Sources. Your Mac downloads, signs, and installs it, then it appears here. You can also install a local IPA from your Mac.";
+"apps.empty.detail" = "Choose an IPA from Files or an app from Sources. Apps appear here after your Mac installs them.";
 "apps.empty.selectDevice" = "Select this device first";
 "apps.empty.title" = "No managed apps yet";
 "apps.excludeSelf.detail" = "Store is excluded from this refresh";
@@ -52,6 +52,7 @@
 "apps.welcome.title" = "Choose apps here. Install with your Mac.";
 "common.alert" = "Notice";
 "common.appDetails" = "App Details";
+"common.cancel" = "Cancel";
 "common.close" = "Close";
 "common.done" = "Done";
 "common.ok" = "OK";
@@ -110,6 +111,17 @@
 "error.uncertainInstall" = "%@ If the request reached your Mac, it will continue installing. Reconnect and check Activity.";
 "error.uncertainRefresh" = "%@ If the request reached your Mac, it will continue working. Reconnect and check Activity.";
 "error.uncertainUpdate" = "%@ If the request reached your Mac, it will continue updating. Reconnect and check Activity.";
+"ipa.choose" = "Choose IPA from Files";
+"ipa.confirm" = "%1$@ will sign this IPA and install it on %2$@.";
+"ipa.foreground" = "Keep Store open until the upload finishes.";
+"ipa.install" = "Upload and Install";
+"ipa.invalidFile" = "Choose a nonempty .ipa file.";
+"ipa.readError" = "Couldn’t read the selected IPA. %@";
+"ipa.targetChanged" = "The Mac or installation device changed or went offline. Check the target and choose the file again.";
+"ipa.tooLarge" = "Choose an IPA that is 4 GiB or smaller.";
+"ipa.tryAgain" = "Wait for the current operation to finish, then try again.";
+"ipa.upgradeMac" = "Update AutoSign on your Mac to install IPAs from Files.";
+"ipa.uploading" = "Uploading %@ to your Mac…";
 "language.hint" = "Changes apply immediately. Your preference is saved on this device.";
 "language.system" = "Follow System";
 "language.title" = "Language";

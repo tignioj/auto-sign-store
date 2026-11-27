@@ -26,6 +26,7 @@ Supports **English and Simplified Chinese**, following the system language by de
 | 源更新检测与一键更新 | 1.2.0 | 1.4.0 |
 | 优先仅更新描述文件续签 | 兼容旧客户端，界面说明需 1.2.0 | 1.4.1 |
 | 安装时绑定本机并自动选择 | 1.4.1 | 1.11.0 |
+| 从“文件”选择并安装本地 IPA | 1.5.0 | 1.13.0 |
 
 ## 首次安装与连接
 
@@ -68,6 +69,12 @@ Mac 在安装前必须重新获取最新源，并检查下载大小、IPA 完整
 手机退出、网络响应丢失或升级 Store 自身导致退出后，重新连接可恢复任务结果。服务重启会将未完成任务标记为中断，需要重新发起。
 
 签名使用原有 Xcode 流程，免费账号须获得新的 7 天描述文件才继续安装。Apple 账号、设备配对和开发者模式仍需有效。包含现有签名器不支持的扩展或权限的 IPA 会明确报错；这些任务不会显示安装成功。
+
+## 从“文件”安装本地 IPA
+
+在 iPhone 或 iPad 的“我的应用”中选择目标设备，点击 **从“文件”选择 IPA**，选中一个 `.ipa`，核对文件名和设备后点击 **上传并安装**。上传期间保持 Store 在前台，收到任务后可在“活动”查看 Mac 的签名和安装结果。安装成功的应用可在“我的应用”中续签。
+
+此功能需要手机和 Mac 两端均支持本地 IPA 安装。单个文件最大 4 GiB，无需添加应用源。Mac 验证文件内容，按“签名设置”安装新应用，覆盖已有应用时沿用其签名团队和应用标识。
 
 ## 源更新检测与一键更新
 
@@ -153,7 +160,7 @@ python3 Scripts/generate-source.py --ipa dist/AutoSignStore.ipa \
 
 ## 局域网 API v1
 
-Mac 端监听 TCP `8091`，广播 Bonjour `_autosign._tcp`。所有接口要求 `Authorization: Bearer <配对密钥>`，使用 JSON，日期为 ISO 8601。
+Mac 端监听 TCP `8091`，广播 Bonjour `_autosign._tcp`。所有接口要求 `Authorization: Bearer <配对密钥>`。响应使用 JSON，日期为 ISO 8601。本地 IPA 上传使用二进制请求体，其余有请求体的接口使用 JSON。
 
 | 方法 | 路径 | 内容 |
 | --- | --- | --- |
@@ -163,12 +170,15 @@ Mac 端监听 TCP `8091`，广播 Bonjour `_autosign._tcp`。所有接口要求 
 | POST | `/v1/sources/refresh` | 刷新指定 `{ "url": "源JSON地址" }`，返回源列表 |
 | POST | `/v1/sources/remove` | 移除指定 `{ "url": "源JSON地址" }`，返回剩余源列表 |
 | POST | `/v1/install` | 提交 `{ "requestID": "UUID", "deviceUDID": "设备UDID", "sourceURL": "已订阅源的规范地址", "bundleIdentifier": "源中的应用标识" }`，返回任务 |
+| POST | `/v1/install/ipa` | 上传所选 IPA 的原始字节，返回安装任务（见下文） |
 | POST | `/v1/refresh` | 提交 `{ "requestID": "UUID", "deviceUDID": "设备UDID", "appIDs": ["应用记录ID"] }`，返回任务 |
 | POST | `/v1/updates/check` | 立即检查所有源，返回最新状态；请求体 `{}` |
 | POST | `/v1/updates` | 提交与刷新相同结构的请求，按应用记录 ID 批量更新，返回任务 |
 | GET | `/v1/jobs/{任务UUID}` | 查询持久化的逐应用进度与安装结果 |
 
-状态接口可选的 `capabilities` 数组包含 `sources` 和 `install` 时支持手机源管理和安装；旧 Mac 未声明时客户端提示更新，续签仍可用。安装任务带可选 `installRequest`，复用现有任务查询及逐项状态结构。手机仅提交源和应用选择，不提交 Mac 文件路径、私钥、描述文件或下载内容。
+状态接口可选的 `capabilities` 数组包含 `sources` 和 `install` 时支持手机源管理和安装；旧 Mac 未声明时客户端提示更新，续签仍可用。安装任务带可选 `installRequest`，复用现有任务查询及逐项状态结构。通过应用源安装时，手机只提交源和应用选择，Mac 负责下载。
+
+`capabilities` 中的 `install-ipa` 表示支持从“文件”安装。`POST /v1/install/ipa` 使用 `Content-Type: application/octet-stream`、准确的 `Content-Length`、`X-Request-ID`（UUID）和 `X-Device-UDID`，可用 `X-IPA-Filename` 传入百分号编码的 UTF-8 文件名供显示。Mac 分段写入临时文件，收齐后持久化任务并返回 `202`。任务的 `uploadedIPA.sha256` 记录内容摘要；相同请求编号、设备和文件内容返回原任务。
 
 `capabilities` 中的 `updates` 表示支持版本更新；状态可选字段 `availableUpdates` 和 `sourceCheck` 提供更新列表、检查时间及失败源。更新任务带 `updateRequest`，与安装、续签请求编号不能混用，旧客户端忽略这些可选字段。
 

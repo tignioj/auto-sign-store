@@ -14,7 +14,7 @@
 "apps.deviceBound" = "已绑定本机，连接时会自动选择。也可手动切换，管理其他设备。";
 "apps.deviceBoundMissing" = "此 Mac 尚未找到绑定的本机。请检查设备配对与连接，也可手动选择其他设备。";
 "apps.deviceNotReady" = "设备未就绪：解锁设备，确认首次 USB 配对、Wi-Fi 连接和开发者模式。";
-"apps.empty.detail" = "在“应用源”添加源并选择应用，让 Mac 自动下载、签名和安装。安装成功后会显示在这里，也可以在 Mac 安装本地 IPA。";
+"apps.empty.detail" = "从“文件”中选择 IPA，或在“应用源”选择应用。Mac 安装成功后，应用会显示在这里。";
 "apps.empty.selectDevice" = "先选择这台设备";
 "apps.empty.title" = "还没有受管理的应用";
 "apps.excludeSelf.detail" = "本次批量刷新不包含 Store 自身";
@@ -52,6 +52,7 @@
 "apps.welcome.title" = "手机选应用，Mac 帮你安装。";
 "common.alert" = "操作提示";
 "common.appDetails" = "应用详情";
+"common.cancel" = "取消";
 "common.close" = "关闭";
 "common.done" = "完成";
 "common.ok" = "知道了";
@@ -110,6 +111,17 @@
 "error.uncertainInstall" = "%@ 如果请求已送达，Mac 会继续安装；重新连接后可在活动中查看。";
 "error.uncertainRefresh" = "%@ 如果请求已送达，Mac 会继续执行；重新连接后可在活动中查看。";
 "error.uncertainUpdate" = "%@ 如果请求已送达，Mac 会继续更新；重新连接后可在活动中查看。";
+"ipa.choose" = "从“文件”选择 IPA";
+"ipa.confirm" = "“%1$@”将为此 IPA 签名，并安装到“%2$@”。";
+"ipa.foreground" = "上传完成前，请保持 Store 在前台打开。";
+"ipa.install" = "上传并安装";
+"ipa.invalidFile" = "请选择非空的 .ipa 文件。";
+"ipa.readError" = "无法读取所选 IPA。%@";
+"ipa.targetChanged" = "Mac 或安装设备已切换或离线。请核对目标设备，再重新选择文件。";
+"ipa.tooLarge" = "请选择不超过 4 GiB 的 IPA。";
+"ipa.tryAgain" = "请等待当前操作完成，再重试安装。";
+"ipa.upgradeMac" = "请更新 Mac 上的 AutoSign，以便从“文件”安装 IPA。";
+"ipa.uploading" = "正在向 Mac 上传 %@…";
 "language.hint" = "切换后立即生效，语言偏好保存在此设备。";
 "language.system" = "跟随系统";
 "language.title" = "语言";

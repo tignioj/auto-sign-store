@@ -239,3 +239,51 @@ private func requestData(_ request: URLRequest) throws -> Data {
     #expect(app.buildVersion == nil)
     #expect(app.version == "1.0")
 }
+
+extension ClientContractTests {
+    @Test func uploadsSelectedIPAWithDeviceAndStableRequestID() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let file = folder.appendingPathComponent("应用 100%.IPA")
+        let package = Data(repeating: 0x41, count: 80 * 1024)
+        try package.write(to: file)
+        let id = UUID().uuidString
+        MockProtocol.handler = { request in
+            #expect(request.httpMethod == "POST")
+            #expect(request.url?.path == "/v1/install/ipa")
+            #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer test-token")
+            #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/octet-stream")
+            #expect(request.value(forHTTPHeaderField: "Content-Length") == String(package.count))
+            #expect(request.value(forHTTPHeaderField: "X-Request-ID") == id)
+            #expect(request.value(forHTTPHeaderField: "X-Device-UDID") == "ipad")
+            #expect(request.value(forHTTPHeaderField: "X-IPA-Filename")?.removingPercentEncoding == file.lastPathComponent)
+            let job = RefreshJob(id: UUID().uuidString, requestID: id, deviceUDID: "ipad", state: .queued,
+                                 items: [], createdAt: Date(), updatedAt: Date(), uploadedIPA: StoreUploadedIPA(sha256: "digest"))
+            return (202, try StoreJSON.encoder().encode(job))
+        }
+        let job = try await client().installIPA(at: file, requestID: id, deviceUDID: "ipad")
+        #expect(job.requestID == id && job.uploadedIPA?.sha256 == "digest")
+        #expect(job.statusTitle(locale: Locale(identifier: "en")) == L10n.string("task.queued.install", locale: Locale(identifier: "en")))
+        #expect(try Data(contentsOf: file) == package)
+    }
+
+    @Test func rejectsUnsuitableFilesBeforeUpload() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        MockProtocol.handler = { _ in Issue.record("Invalid packages must be rejected before uploading"); return (500, Data()) }
+        let wrongType = folder.appendingPathComponent("other.zip")
+        let empty = folder.appendingPathComponent("empty.ipa")
+        let large = folder.appendingPathComponent("large.ipa")
+        try Data([42]).write(to: wrongType)
+        try Data().write(to: empty)
+        try Data().write(to: large)
+        let handle = try FileHandle(forWritingTo: large)
+        try handle.truncate(atOffset: 4_294_967_297)
+        try handle.close()
+        for file in [wrongType, empty, large, folder.appendingPathComponent("missing.ipa")] {
+            await #expect(throws: StoreClientError.self) { try await client().installIPA(at: file, requestID: UUID().uuidString, deviceUDID: "ipad") }
+        }
+    }
+}

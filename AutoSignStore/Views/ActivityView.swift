@@ -16,7 +16,17 @@ struct ActivityView: View {
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
-                if model.jobs.isEmpty {
+                if let filename = model.uploadingFilename {
+                    StoreCard {
+                        HStack(spacing: 14) {
+                            ProgressView()
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text(L10n.tr("ipa.uploading", filename)).font(.headline)
+                                Text(L10n.tr("ipa.foreground")).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                } else if model.jobs.isEmpty {
                     ContentUnavailableView(L10n.tr("activity.empty.title"), systemImage: "clock.arrow.circlepath",
                         description: Text(L10n.tr("activity.empty.detail")))
                         .padding(.top, 70)
