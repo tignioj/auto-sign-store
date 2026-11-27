@@ -10,14 +10,6 @@
     <key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
     <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
     <key>AutoSignStoreClient</key><true/>
-    <key>UTImportedTypeDeclarations</key>
-    <array><dict>
-        <key>UTTypeIdentifier</key><string>com.apple.itunes.ipa</string>
-        <key>UTTypeConformsTo</key><array><string>public.executable</string></array>
-        <key>UTTypeTagSpecification</key><dict>
-            <key>public.filename-extension</key><array><string>ipa</string></array>
-        </dict>
-    </dict></array>
     <key>LSRequiresIPhoneOS</key><true/>
     <key>NSLocalNetworkUsageDescription</key><string>Connect to your Mac over Wi-Fi to send selected IPA files, install apps from sources, and refresh app signatures.</string>
     <key>NSBonjourServices</key><array><string>_autosign._tcp</string></array>

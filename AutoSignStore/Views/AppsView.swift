@@ -320,7 +320,9 @@ private struct IPAInstallView: View {
                 if let pickerError { Text(pickerError).font(.caption).foregroundStyle(.orange) }
             }
         }
-        .fileImporter(isPresented: $isPicking, allowedContentTypes: [UTType(importedAs: "com.apple.itunes.ipa")]) { result in
+        // File providers can report the same IPA with different content types.
+        // Let Files return the item, then check its extension before showing confirmation.
+        .fileImporter(isPresented: $isPicking, allowedContentTypes: [.item]) { result in
             do {
                 let url = try result.get()
                 guard url.pathExtension.lowercased() == "ipa" else { pickerError = L10n.tr("ipa.invalidFile"); return }
