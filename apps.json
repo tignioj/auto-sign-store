@@ -19,10 +19,19 @@
       "appPermissions": {
         "entitlements": [],
         "privacy": {
-          "NSLocalNetworkUsageDescription": "Discover AutoSign on a Mac on the same Wi-Fi to install apps from sources and refresh app signatures, including AutoSign Store itself."
+          "NSLocalNetworkUsageDescription": "Connect to your Mac over Wi-Fi to send selected IPA files, install apps from sources, and refresh app signatures."
         }
       },
       "versions": [
+        {
+          "version": "1.5.0",
+          "buildVersion": "12",
+          "date": "2026-11-27T15:18:09Z",
+          "localizedDescription": "在 iPhone 或 iPad 的「我的应用」中选择目标设备，点「从“文件”选择 IPA」即可上传本地安装包。Mac 会检查 IPA，使用已配置的签名身份安装。安装进度和结果显示在「活动」中。\n\n- 需要 Mac AutoSign 1.13.0 或更高版本，单个 IPA 最大 4 GiB。\n- 已在 iPhone 18 Pro Max（iOS 27.2.1）上通过系统「文件」选包、上传、签名和覆盖安装验证，安装后读回为 1.5.0（构建 12）。\n- 发布的 AutoSignStore.ipa 与本次真机从「文件」选择的原始 IPA 具有相同的 SHA-256。",
+          "downloadURL": "https://github.com/tignioj/auto-sign-store/releases/download/v1.5.0/AutoSignStore.ipa",
+          "size": 579607,
+          "minOSVersion": "17.0"
+        },
         {
           "version": "1.4.1",
           "buildVersion": "10",
